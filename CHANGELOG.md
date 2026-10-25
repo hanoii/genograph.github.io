@@ -6,6 +6,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Show each person's age on their card: current age for the living, age at
+  death for the deceased, in years and months (for example `82y 2m`). Ages from
+  uncertain or partial dates are marked `~`; no age is shown when it cannot be
+  worked out.
+
 ## [1.2.3] - 2026-08-23
 
 ### Added

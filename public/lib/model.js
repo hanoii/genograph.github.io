@@ -53,6 +53,52 @@ export function normalizeDate(s) {
   return uncertain ? { value: str, uncertain } : null;
 }
 
+/* ---------------- age ---------------- */
+
+/** Oldest age shown for someone with no recorded death; past it the record is presumed incomplete. */
+export const MAX_LIVING_AGE = 110;
+
+// earliest and latest possible [y, m, d] of a structured date, plus whether its month is known
+function dateBounds(value) {
+  const m = /^(\d{4})(?:\.(\d{2}))?(?:\.(\d{2}))?$/.exec(String(value ?? ''));
+  if (!m) return null;
+  const y = +m[1], mo = m[2] ? +m[2] : null, d = m[3] ? +m[3] : null;
+  return { lo: [y, mo ?? 1, d ?? 1], hi: [y, mo ?? 12, d ?? 31], month: mo != null };
+}
+const monthsBetween = (a, b) => (b[0] - a[0]) * 12 + (b[1] - a[1]) - (b[2] < a[2] ? 1 : 0);
+
+/**
+ * Age at death for the deceased, as of `today` for the living.
+ * Returns { years, months, approx }, or null when it cannot be told (no birth date,
+ * deceased without a death date, death before birth, or implausibly old with no
+ * death recorded). `months` is null unless both dates carry a month. `approx` marks
+ * an uncertain date or one too imprecise to pin the age down; the age is then the
+ * lowest possible one.
+ */
+export function ageOf(p, today = new Date()) {
+  const birth = dateBounds(p.birth_date);
+  if (!birth) return null;
+  let end, approx = !!p.birth_date_uncertain;
+  if (p.death_date) {
+    end = dateBounds(p.death_date);
+    if (!end) return null;
+    approx = approx || !!p.death_date_uncertain;
+  } else if (p.deceased) {
+    return null;
+  } else {
+    const now = [today.getFullYear(), today.getMonth() + 1, today.getDate()];
+    end = { lo: now, hi: now, month: true };
+  }
+  const max = monthsBetween(birth.lo, end.hi);
+  if (max < 0) return null;
+  const min = Math.max(0, monthsBetween(birth.hi, end.lo));
+  const years = Math.floor(min / 12);
+  if (!p.death_date && years > MAX_LIVING_AGE) return null;
+  const withMonths = birth.month && end.month;
+  approx = approx || (withMonths ? min !== max : years !== Math.floor(max / 12));
+  return { years, months: withMonths ? min % 12 : null, approx };
+}
+
 /* ---------------- causes of death ---------------- */
 export const CAUSES = ['natural', 'illness', 'accident', 'war', 'childbirth', 'homicide', 'suicide', 'unknown', 'other'];
 

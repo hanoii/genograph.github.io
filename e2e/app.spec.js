@@ -68,6 +68,30 @@ test('hosted IndexedDB mode persists edits across reloads', async ({ page }) => 
   await expect(page.locator('#tmStorePath')).toContainText('Stored in this browser');
 });
 
+test('cards show the current age of the living and the age at death', async ({ page }) => {
+  await openApp(page, HOSTED);
+  await createTreeWithPerson(page, `E2E ages ${Date.now()}`, 'Age Parent');
+  await page.locator('.card', { hasText: 'Age Parent' }).click();
+  await page.locator('#panel [data-add="child"]').click();
+  await page.locator('#apName').fill('Age Child');
+  await page.locator('#apBd').fill('1990.01.01');
+  await page.locator('#apOk').click();
+  const now = new Date();
+  const [years, months] = [now.getFullYear() - 1990, now.getMonth()];
+  const child = page.locator('.card', { hasText: 'Age Child' });
+  await expect(child.locator('.cdates')).toHaveText('b. 1990');
+  await expect(child.locator('.cage')).toHaveText(`${years}y`);
+  await expect(child.locator('.cage')).toHaveAttribute('title', months ? `${years}y ${months}m` : `${years}y`);
+
+  await page.locator('#panel [data-add="child"]').click();
+  await page.locator('#apName').fill('Age Grandchild');
+  await page.locator('#apBd').fill('1920.06.15');
+  await page.locator('#apDd').fill('2001.06.14');
+  await page.locator('#apOk').click();
+  await expect(page.locator('.card', { hasText: 'Age Grandchild' }).locator('.cage')).toHaveText('80y');
+  await expect(page.locator('#pAge')).toHaveText('Age at death: 80y 11m');
+});
+
 test('an edit made during an in-flight save is persisted by a later generation', async ({ page }) => {
   let writes = 0;
   let releaseFirst;

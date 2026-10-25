@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   normalizeDate, splitPlaceCountry, buildModel, serialize, rootIdOf, setRootId,
-  birthSortIds, siblingIds, isValidTree, validateTree, yearOf, norm, searchText
+  birthSortIds, siblingIds, isValidTree, validateTree, yearOf, norm, searchText, ageOf, MAX_LIVING_AGE
 } from '../public/lib/model.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -194,6 +194,35 @@ test('birthSortIds — oldest first, undated keep file order last', () => {
     ]
   });
   assert.deepEqual(birthSortIds(m, ['a', 'b', 'c', 'd']), ['c', 'a', 'b', 'd']);
+});
+
+const TODAY = new Date(2026, 9, 25);
+
+test('ageOf — years and months at death, counting birthdays exactly', () => {
+  assert.deepEqual(ageOf({ birth_date: '1940.04.21', death_date: '2023.04.19', deceased: true }, TODAY), { years: 82, months: 11, approx: false });
+  assert.deepEqual(ageOf({ birth_date: '1940.04.21', death_date: '2023.06.21' }, TODAY), { years: 83, months: 2, approx: false });
+});
+
+test('ageOf — current age for the living', () => {
+  assert.deepEqual(ageOf({ birth_date: '1979.11.17' }, TODAY), { years: 46, months: 11, approx: false });
+  assert.deepEqual(ageOf({ birth_date: '1979.10.25' }, TODAY), { years: 47, months: 0, approx: false });
+  assert.deepEqual(ageOf({ birth_date: '2026.05.01' }, TODAY), { years: 0, months: 5, approx: false });
+});
+
+test('ageOf — imprecise or uncertain dates give the lowest possible age, marked approximate', () => {
+  assert.deepEqual(ageOf({ birth_date: '1940', death_date: '2023' }, TODAY), { years: 82, months: null, approx: true });
+  assert.deepEqual(ageOf({ birth_date: '1940', death_date: '2023.05.02' }, TODAY), { years: 82, months: null, approx: true }, 'months need both dates');
+  assert.deepEqual(ageOf({ birth_date: '1940.04', death_date: '2023.06' }, TODAY), { years: 83, months: 1, approx: true }, 'unknown days');
+  assert.deepEqual(ageOf({ birth_date: '1940.04.21', birth_date_uncertain: true, death_date: '2023.04.21' }, TODAY), { years: 83, months: 0, approx: true });
+});
+
+test('ageOf — unknown when it cannot be told', () => {
+  assert.equal(ageOf({}, TODAY), null, 'no birth date');
+  assert.equal(ageOf({ death_date: '2023' }, TODAY), null, 'death date only');
+  assert.equal(ageOf({ birth_date: '1940', deceased: true }, TODAY), null, 'deceased, death date unknown');
+  assert.equal(ageOf({ birth_date: '2000', death_date: '1990' }, TODAY), null, 'death before birth');
+  assert.equal(ageOf({ birth_date: String(2026 - MAX_LIVING_AGE - 2) }, TODAY), null, 'implausibly old with no death recorded');
+  assert.equal(ageOf({ birth_date: '1850', death_date: '1960' }, TODAY).years, 109, 'long-lived dead are still shown');
 });
 
 test('siblingIds — other children of the shared parents', () => {
