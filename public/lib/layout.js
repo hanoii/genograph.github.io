@@ -158,8 +158,9 @@ export function layout(model, focusId, mode) {
     };
   }
 
-  // ancestor block for a person on the direct line
-  function ancNode(pid, depth, trail = new Set()) {
+  // ancestor block for a person on the direct line; `side` is 'father' or 'mother'
+  // when pid is a parent of the person below, so pid can sit next to their spouse
+  function ancNode(pid, depth, trail = new Set(), side = null) {
     if (!pid || depth > MAXDEPTH || trail.has(pid)) return null;
     spend();
     const p = by(pid);
@@ -168,9 +169,9 @@ export function layout(model, focusId, mode) {
     nextTrail.add(pid);
     const faId = (p && p._father && by(p._father)) ? p._father : null;
     const moId = (p && p._mother && by(p._mother)) ? p._mother : null;
-    const faB = (faId && depth < MAXDEPTH) ? ancNode(faId, depth + 1, nextTrail) : null;
+    const faB = (faId && depth < MAXDEPTH) ? ancNode(faId, depth + 1, nextTrail, 'father') : null;
     const moB = (moId && moId !== faId && depth < MAXDEPTH)
-      ? ancNode(moId, depth + 1, nextTrail)
+      ? ancNode(moId, depth + 1, nextTrail, 'mother')
       : null;
 
     let rowIds = [pid];
@@ -182,6 +183,12 @@ export function layout(model, focusId, mode) {
       }
       if (!seen.has(pid)) rowIds.push(pid);
       rowIds = birthSortIds(model, rowIds);
+      // siblings stay in birth order, but a father sits at the right end of his row
+      // and a mother at the left end, so the couple meets in the middle
+      if (side) {
+        rowIds = rowIds.filter(id => id !== pid);
+        if (side === 'father') rowIds.push(pid); else rowIds.unshift(pid);
+      }
     }
     const rowB = rowIds.map(id => id === pid
       ? (pid === focusId ? descNode(pid, 0) : cardBlock(pid))
