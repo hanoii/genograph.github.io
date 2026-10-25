@@ -176,7 +176,8 @@ optional fields:
       "father_id": "p2",
       "mother_id": "p3",
       "spouse_ids": ["p4"],
-      "children_ids": ["p5"]
+      "children_ids": ["p5"],
+      "sibling_ids": ["p6"]            // only for siblings with no recorded shared parent
     }
   ]
 }
@@ -184,6 +185,8 @@ optional fields:
 
 Relationships are stored by `id` (names can repeat in a family, so ids keep links
 unambiguous); human-readable name fields are written alongside for portability.
+Siblings who share a recorded parent are derived from that parent; `sibling_ids`
+links siblings whose parents are unknown, and the link is kept in both people.
 Dates support an *approximate* flag (`birth_date_uncertain`, …). See
 [`examples/lusignan.json`](examples/lusignan.json) for a complete example.
 

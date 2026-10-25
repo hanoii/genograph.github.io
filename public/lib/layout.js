@@ -87,6 +87,14 @@ export function layout(model, focusId, mode) {
     if (hi > lo) seg(lo, bus, hi, bus);
     for (const c of childCenters) seg(c, bus, c, cTop);
   }
+  // sibling bar above explicitly linked siblings (no recorded shared parent);
+  // sits below the parents' bus so the two never read as one line
+  function siblingBar(centers, gen) {
+    if (centers.length < 2) return;
+    const top = -gen * PITCH, bar = top - 12;
+    seg(Math.min(...centers), bar, Math.max(...centers), bar);
+    for (const c of centers) seg(c, bar, c, top);
+  }
 
   // a bare single-card block
   const cardBlock = pid => ({
@@ -173,10 +181,11 @@ export function layout(model, focusId, mode) {
       ? ancNode(moId, depth + 1, nextTrail)
       : null;
 
+    const linked = ancOnly ? [] : p._siblings.filter(s => by(s) && !spine.has(s));
     let rowIds = [pid];
-    if (!ancOnly && (faId || moId)) {
+    if (!ancOnly && (faId || moId || linked.length)) {
       const seen = new Set(); rowIds = [];
-      const lists = [faId ? by(faId)._children : [], moId ? by(moId)._children : []];
+      const lists = [faId ? by(faId)._children : [], moId ? by(moId)._children : [], linked];
       for (const l of lists) for (const c of l) {
         if (!seen.has(c) && by(c) && (c === pid || !spine.has(c))) { seen.add(c); rowIds.push(c); }
       }
@@ -245,10 +254,13 @@ export function layout(model, focusId, mode) {
         let fC = null, mC = null;
         if (faB) fC = faB.place(x + q, gen + 1);
         if (moB) mC = moB.place(x + dxMo + q, gen + 1);
-        const centers = []; let selfC = null;
+        const centers = [], linkedCenters = []; let selfC = null;
         rowB.forEach((b, i) => {
           const c = b.place(x + r + rowDx[i], gen);
-          centers.push(c);
+          const row = by(rowIds[i]);
+          // only children of the drawn parents hang from their connector
+          if (rowIds[i] === pid || (faId && row._father === faId) || (moId && row._mother === moId)) centers.push(c);
+          else linkedCenters.push(c);
           if (rowIds[i] === pid) selfC = c;
         });
         if (fC != null || mC != null) {
@@ -256,6 +268,7 @@ export function layout(model, focusId, mode) {
             : { x: fC ?? mC, y: -(gen + 1) * PITCH + CARD_H };
           dropToChildren(d, centers, gen);
         }
+        if (linkedCenters.length) siblingBar([selfC, ...linkedCenters], gen);
         return selfC;
       }
     };

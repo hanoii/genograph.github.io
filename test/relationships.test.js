@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { buildModel } from '../public/lib/model.js';
-import { linkSpouses, setParent, wouldCreateParentCycle } from '../public/lib/relationships.js';
+import { linkSiblings, linkSpouses, setParent, wouldCreateParentCycle } from '../public/lib/relationships.js';
 
 const family = () => buildModel({
   people: [
@@ -43,4 +43,16 @@ test('spouse commands are symmetric, deduplicated, and reject self-links', () =>
   assert.deepEqual(model.byId.get('old-parent')._spouses, ['new-parent']);
   assert.deepEqual(model.byId.get('new-parent')._spouses, ['old-parent']);
   assert.throws(() => linkSpouses(model, 'child', 'child'), { code: 'ESELF' });
+});
+
+test('sibling commands are symmetric, deduplicated, and reject self and parent links', () => {
+  const model = family();
+  linkSiblings(model, 'grandparent', 'new-parent');
+  linkSiblings(model, 'new-parent', 'grandparent');
+  assert.deepEqual(model.byId.get('grandparent')._siblings, ['new-parent']);
+  assert.deepEqual(model.byId.get('new-parent')._siblings, ['grandparent']);
+  assert.throws(() => linkSiblings(model, 'child', 'child'), { code: 'ESELF' });
+  assert.throws(() => linkSiblings(model, 'child', 'old-parent'), { code: 'EPARENTSIBLING' });
+  assert.throws(() => setParent(model, 'new-parent', 'grandparent', '_father'), { code: 'EPARENTSIBLING' });
+  assert.deepEqual(model.byId.get('child')._siblings, []);
 });

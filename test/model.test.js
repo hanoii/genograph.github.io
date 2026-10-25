@@ -205,6 +205,39 @@ test('siblingIds — other children of the shared parents', () => {
   assert.ok(!sibs.includes('p11'), 'spouse is not a sibling');
 });
 
+test('siblingIds — includes explicit sibling links when no parents are recorded', () => {
+  const m = buildModel({
+    people: [
+      { id: 'a', name: 'A', sibling_ids: ['b'] },
+      { id: 'b', name: 'B' },
+      { id: 'c', name: 'C', siblings: ['A'] }
+    ]
+  });
+  assert.deepEqual(siblingIds(m, m.byId.get('b')), ['a'], 'link is mirrored');
+  assert.deepEqual(siblingIds(m, m.byId.get('a')), ['b', 'c'], 'name-based links resolve');
+});
+
+test('serialize — round-trips explicit sibling ids and keeps dangling ones', () => {
+  const m = buildModel({
+    people: [
+      { id: 'a', name: 'A', sibling_ids: ['b', 'missing-sibling'] },
+      { id: 'b', name: 'B' }
+    ]
+  });
+  const out = serialize(m);
+  const a = out.people.find(person => person.id === 'a');
+  const b = out.people.find(person => person.id === 'b');
+  assert.deepEqual(a.sibling_ids, ['b', 'missing-sibling']);
+  assert.deepEqual(b.sibling_ids, ['a']);
+  assert.deepEqual(b.siblings, ['A']);
+  assert.deepEqual(buildModel(out).byId.get('b')._siblings, ['a']);
+});
+
+test('validateTree — rejects malformed sibling references', () => {
+  assert.throws(() => validateTree({ people: [{ id: 'a', name: 'A', sibling_ids: 'b' }] }), /sibling_ids/);
+  assert.throws(() => validateTree({ people: [{ id: 'a', name: 'A', siblings: [1] }] }), /siblings/);
+});
+
 test('rootIdOf — prefers a valid summary.root', () => {
   const m = buildModel({
     summary: { root: 'b' },
