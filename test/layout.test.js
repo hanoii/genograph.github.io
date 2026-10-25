@@ -132,3 +132,22 @@ test('layout — direct-line parents sit at the inner edge of their sibling rows
     assert.equal(x('mom') - x('dad'), CARD_W + H_GAP, `${mode}: the parents are adjacent`);
   }
 });
+
+test('layout — a person reachable twice is drawn only once', () => {
+  // a mistaken spouse link between two sisters makes each reachable as a
+  // sibling and as the other's spouse; a married cousin is reachable twice too
+  const model = buildModel({
+    people: [
+      { id: 'kid', name: 'Kid', mother_id: 'mom' },
+      { id: 'mom', name: 'Mom', sex: 'F', father_id: 'gf', spouse_ids: ['aunt'] },
+      { id: 'aunt', name: 'Aunt', sex: 'F', father_id: 'gf', spouse_ids: ['mom'] },
+      { id: 'uncle', name: 'Uncle', sex: 'M', father_id: 'gf', children_ids: ['cousin'] },
+      { id: 'cousin', name: 'Cousin', father_id: 'uncle', spouse_ids: ['kid'] },
+      { id: 'gf', name: 'Grandfather', sex: 'M' }
+    ]
+  });
+  for (const mode of ['full', 'close']) {
+    const ids = layout(model, 'kid', mode).cards.map(card => card.id);
+    assert.equal(new Set(ids).size, ids.length, `${mode}: no duplicate cards (${ids.join(', ')})`);
+  }
+});
