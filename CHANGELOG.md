@@ -6,6 +6,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Show each person's age on their card: current age for the living, age at
+  death for the deceased, in years and months (for example `82y 2m`). Ages from
+  uncertain or partial dates are marked `~`; no age is shown when it cannot be
+  worked out.
+
 ### Fixed
 - Link a new sibling to a person who has no recorded parents. Siblings without
   a shared parent are now stored as explicit, reciprocal `sibling_ids` links and

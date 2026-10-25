@@ -8,7 +8,7 @@
 
 import {
   buildModel, serialize, rootIdOf, setRootId, validateTree, TREE_LIMITS,
-  birthSortIds, siblingIds, norm, searchText, yearOf, CAUSES, DATE_RE
+  birthSortIds, siblingIds, norm, searchText, yearOf, ageOf, CAUSES, DATE_RE
 } from './lib/model.js';
 import { layout, CARD_W, CARD_H } from './lib/layout.js';
 import { pickStore, openFolder, supportsFolders } from './lib/storage.js';
@@ -65,6 +65,7 @@ const I18N = {
     addedSnack: 'Eklendi: {n}', linkedSnack: 'Bağlandı: {n}', deletedSnack: 'Silindi: {n}',
     fabTitle: 'Yeni kişi ekle', dblFocus: 'Çift tıkla: bu kişiye odaklan', closePanel: 'Kapat',
     noResults: 'Sonuç yok', offTree: 'ağaç dışı', born: 'd.', died: 'ö.',
+    ageY: '{y}y', ageM: '{m}a', ageYM: '{y}y {m}a', age: 'Yaş', ageAtDeath: 'Ölüm yaşı',
     // tree library
     newTree: 'Yeni ağaç', importTreeBtn: 'JSON içe aktar…', renameTree: 'Yeniden adlandır',
     duplicateTree: 'Çoğalt', exportTree: 'JSON dışa aktar', deleteTreeBtn: 'Ağacı sil',
@@ -147,6 +148,7 @@ const I18N = {
     addedSnack: 'Added: {n}', linkedSnack: 'Linked: {n}', deletedSnack: 'Deleted: {n}',
     fabTitle: 'Add person', dblFocus: 'Double-click to focus on this person', closePanel: 'Close',
     noResults: 'No results', offTree: 'off-tree', born: 'b.', died: 'd.',
+    ageY: '{y}y', ageM: '{m}m', ageYM: '{y}y {m}m', age: 'Age', ageAtDeath: 'Age at death',
     // tree library
     newTree: 'New tree', importTreeBtn: 'Import JSON…', renameTree: 'Rename',
     duplicateTree: 'Duplicate', exportTree: 'Export JSON', deleteTreeBtn: 'Delete tree',
@@ -249,6 +251,16 @@ function lifeSpan(p) {
   if (b) return (p.deceased && !d) ? `${bu}${b} – †` : `${t('born')} ${bu}${b}`;
   if (d) return `${t('died')} ${du}${d}`;
   return p.deceased ? '†' : '';
+}
+/**
+ * Compact age such as "82y 2m", "~82y" or "5m" (approximate ages are marked with ~);
+ * `short` drops the months once the person is a year old.
+ */
+function ageLabel(age, short = false) {
+  const label = age.months == null || (age.years && (short || age.months === 0)) ? t('ageY', { y: age.years })
+    : age.years ? t('ageYM', { y: age.years, m: age.months })
+    : t('ageM', { m: age.months });
+  return (age.approx ? '~' : '') + label;
 }
 function snack(msg) {
   const sb = $('snackbar');
@@ -399,11 +411,13 @@ function renderTree() {
     div.setAttribute('aria-selected', c.id === selectedId ? 'true' : 'false');
     div.setAttribute('aria-label', t('cardHelp', { n: p.name }));
     const span = lifeSpan(p);
+    const age = ageOf(p);
     const placeSrc = p.birth_place || p.birth_country || '';
     const place = ((p.birth_place_uncertain ? '~' : '') + placeSrc.split(',')[0].trim()).replace(/^~$/, '');
     const nick = (p.aliases || '').split(',')[0].trim();
     div.innerHTML =
-      `<div class="avatar">${esc((p.name || '?').trim().charAt(0).toLocaleUpperCase('tr'))}</div>` +
+      `<div class="cside"><div class="avatar">${esc((p.name || '?').trim().charAt(0).toLocaleUpperCase('tr'))}</div>` +
+      (age ? `<div class="cage" title="${esc(ageLabel(age))}">${esc(ageLabel(age, true))}</div>` : '') + '</div>' +
       `<div class="cinfo"><div class="cname">${esc(p.name)}${p.deceased && !span.includes('†') && !yearOf(p.death_date) ? ' †' : ''}` +
       (nick ? ` <span class="cnick">“${esc(nick)}”</span>` : '') + '</div>' +
       (span ? `<div class="cdates">${esc(span)}</div>` : '') +
@@ -699,6 +713,7 @@ function renderPanel() {
       ${placeRow('death_place', t('deathPlace'), p)}
       ${fieldRow('death_country', t('deathCountry'), p)}
     </div>
+    <div class="agerow" id="pAge"></div>
     <label class="checkrow"><input type="checkbox" id="pDeceased" ${p.deceased ? 'checked' : ''}> ${t('deceased')}</label>
     ${p.deceased ? `<div class="row2">
       <div class="field"><label for="pf-death_cause">${t('deathCause')}</label>
@@ -734,6 +749,12 @@ function renderPanel() {
   $('pFocus').onclick = () => setFocus(p.id);
   if ($('pMakeDefault')) $('pMakeDefault').onclick = () => setDefaultPerson(p.id);
   $('pDelete').onclick = () => confirmDelete(p.id);
+  const showAge = () => {
+    const age = ageOf(p);
+    $('pAge').textContent = age ? `${t(p.death_date ? 'ageAtDeath' : 'age')}: ${ageLabel(age)}` : '';
+    $('pAge').classList.toggle('hidden', !age);
+  };
+  showAge();
   $('pDeceased').onchange = e => { p.deceased = e.target.checked; touch(p); markDirty(); renderPanel(); renderTree(); };
   $('pIlleg').onchange = e => {
     if (e.target.checked) p.had_illegitimate_children = true; else delete p.had_illegitimate_children;
@@ -754,14 +775,14 @@ function renderPanel() {
     inp.addEventListener('change', () => {
       const v = inp.value.trim().replace(/[-/\s]+/g, '.');
       inp.value = v; p[inp.dataset.f] = v;
-      validate(); touch(p); markDirty(); renderTree();
+      validate(); touch(p); markDirty(); renderTree(); showAge();
       if (inp.dataset.f === 'death_date' && v && !p.deceased) { p.deceased = true; renderPanel(); }
     });
   });
   panel.querySelectorAll('[data-unc]').forEach(cb => {
     cb.onchange = () => {
       if (cb.checked) p[cb.dataset.unc] = true; else delete p[cb.dataset.unc];
-      touch(p); markDirty(); renderTree();
+      touch(p); markDirty(); renderTree(); showAge();
     };
   });
   panel.querySelectorAll('[data-sexval]').forEach(btn => {
