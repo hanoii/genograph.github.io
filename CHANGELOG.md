@@ -23,6 +23,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   at the right end, mothers at the left) so couples stay side by side and their
   child sits under them, instead of a marriage line spanning a whole row of
   birth-ordered siblings.
+- Draw each person once even when they are reachable twice, such as a spouse
+  who is also a sibling or a cousin, instead of duplicating their card.
 
 ## [1.2.3] - 2026-08-23
 

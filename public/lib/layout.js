@@ -37,6 +37,10 @@ export function layout(model, focusId, mode) {
     up(p._father, d + 1); up(p._mother, d + 1);
   })(focusId, 0);
 
+  // everyone given a place so far: a person reachable twice (a spouse who is also a
+  // sibling or a cousin, say) is drawn only where they are reached first
+  const claimed = new Set(spine);
+
   const full = mode === 'full', ancOnly = mode === 'ancestors';
   const addCard = (id, x, gen) => {
     if (cards.length >= MAX_LAYOUT_CARDS) {
@@ -110,10 +114,12 @@ export function layout(model, focusId, mode) {
     const withFam = full && !!p && depth < MAXDEPTH && !trail.has(pid);
     const nextTrail = new Set(trail);
     nextTrail.add(pid);
-    const spouses = withFam ? [...new Set(p._spouses.filter(s => !spine.has(s) && by(s)))] : [];
+    const spouses = withFam ? [...new Set(p._spouses.filter(s => !claimed.has(s) && by(s)))] : [];
+    spouses.forEach(s => claimed.add(s));
     const kids = withFam
-      ? birthSortIds(model, [...new Set(p._children.filter(c => by(c) && !nextTrail.has(c)))])
+      ? birthSortIds(model, [...new Set(p._children.filter(c => by(c) && !nextTrail.has(c) && !claimed.has(c)))])
       : [];
+    kids.forEach(c => claimed.add(c));
     if (!spouses.length && !kids.length) return cardBlock(pid);
     const kidB = kids.map(k => descNode(k, depth + 1, nextTrail));
     const cont = new Map();
@@ -199,6 +205,7 @@ export function layout(model, focusId, mode) {
         if (side === 'father') rowIds.push(pid); else rowIds.unshift(pid);
       }
     }
+    rowIds.forEach(id => claimed.add(id));
     const rowB = rowIds.map(id => id === pid
       ? (pid === focusId ? descNode(pid, 0) : cardBlock(pid))
       : descNode(id, 1));
