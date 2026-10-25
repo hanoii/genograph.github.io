@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildModel, rootIdOf } from '../public/lib/model.js';
-import { layout, CARD_W, CARD_H, PITCH } from '../public/lib/layout.js';
+import { layout, CARD_W, CARD_H, PITCH, H_GAP } from '../public/lib/layout.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const example = () => buildModel(JSON.parse(readFileSync(path.join(__dirname, '..', 'examples', 'lusignan.json'), 'utf8')));
@@ -149,4 +149,26 @@ test('layout — an explicit sibling does not hang from the other sibling\'s par
   const hc = half.x + CARD_W / 2;
   assert.ok(!segs.some(([x1, y1, x2, y2]) => x1 === hc && x2 === hc && y1 === -26 && y2 === 0), 'no parent drop to the explicit sibling');
   assert.ok(segs.some(([x1, y1, x2, y2]) => x1 === hc && x2 === hc && y1 === -12 && y2 === 0), 'sibling bar drop instead');
+});
+
+test('layout — direct-line parents sit at the inner edge of their sibling rows', () => {
+  const model = buildModel({
+    people: [
+      { id: 'kid', name: 'Kid', father_id: 'dad', mother_id: 'mom' },
+      { id: 'dad', name: 'Dad', sex: 'M', birth_date: '1939', father_id: 'gf1', spouse_ids: ['mom'] },
+      { id: 'uncle', name: 'Uncle', birth_date: '1945', father_id: 'gf1' },
+      { id: 'mom', name: 'Mom', sex: 'F', birth_date: '1940', father_id: 'gf2' },
+      { id: 'aunt', name: 'Aunt', birth_date: '1923', father_id: 'gf2' },
+      { id: 'aunt2', name: 'Aunt 2', birth_date: '1927', father_id: 'gf2' },
+      { id: 'gf1', name: 'Grandfather 1', sex: 'M' },
+      { id: 'gf2', name: 'Grandfather 2', sex: 'M' }
+    ]
+  });
+  for (const mode of ['full', 'close']) {
+    const { cards } = layout(model, 'kid', mode);
+    const x = id => cards.find(card => card.id === id).x;
+    assert.ok(x('uncle') < x('dad'), `${mode}: younger brother moves left of the father`);
+    assert.ok(x('mom') < x('aunt') && x('aunt') < x('aunt2'), `${mode}: mother first, older sisters after in birth order`);
+    assert.equal(x('mom') - x('dad'), CARD_W + H_GAP, `${mode}: the parents are adjacent`);
+  }
 });

@@ -19,6 +19,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   unlinked.
 - Linking an existing person as a sibling only fills their missing parent roles
   and no longer replaces parents they already have.
+- Place each direct-line parent at the inner edge of their sibling row (fathers
+  at the right end, mothers at the left) so couples stay side by side and their
+  child sits under them, instead of a marriage line spanning a whole row of
+  birth-ordered siblings.
 
 ## [1.2.3] - 2026-08-23
 
