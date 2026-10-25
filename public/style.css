@@ -207,6 +207,14 @@ html[lang="tr"] #zoomFit { font-size: 10px; }
 .chip:hover { background: var(--primary-tint); border-color: var(--spine-border); }
 .chip.addchip { color: var(--primary); border-style: dashed; font-weight: 500; }
 .chip.ghost { color: var(--muted); border-style: dotted; cursor: default; }
+.chipgrp { display: inline-flex; }
+.chipgrp .chip { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; padding-right: 9px; }
+.chipx {
+  border: 1px solid var(--outline); background: var(--surface); border-radius: 0 16px 16px 0; padding: 0 10px 0 7px;
+  font-size: 11px; cursor: pointer; font-family: inherit; color: var(--muted);
+}
+.chipx:hover { color: var(--danger); background: var(--danger-tint); }
+
 
 .panel-actions { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
 .btn {

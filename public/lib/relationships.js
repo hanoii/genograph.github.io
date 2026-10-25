@@ -1,8 +1,8 @@
 /* ============================================================
  * Genograph — relationship commands (pure: no DOM)
  *
- * Keeps parent/child, spouse and sibling links reciprocal and rejects ancestry cycles
- * before mutating the in-memory model.
+ * Keeps parent/child, spouse and sibling links reciprocal when adding or removing
+ * them, and rejects ancestry cycles before mutating the in-memory model.
  * ============================================================ */
 'use strict';
 
@@ -98,5 +98,23 @@ export function linkSiblings(model, firstId, secondId) {
   const second = requirePerson(model, secondId);
   addUnique(first._siblings, secondId);
   addUnique(second._siblings, firstId);
+  return { first, second };
+}
+
+/** Remove every parent role parentId holds for childId, from both sides. */
+export function unlinkParentChild(model, parentId, childId) {
+  const parent = requirePerson(model, parentId);
+  const child = requirePerson(model, childId);
+  for (const slot of ['_father', '_mother']) if (child[slot] === parentId) child[slot] = null;
+  parent._children = without(parent._children, childId);
+  return { parent, child };
+}
+
+/** Unlink two spouses on both sides. */
+export function unlinkSpouses(model, firstId, secondId) {
+  const first = requirePerson(model, firstId);
+  const second = requirePerson(model, secondId);
+  first._spouses = without(first._spouses, secondId);
+  second._spouses = without(second._spouses, firstId);
   return { first, second };
 }

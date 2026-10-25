@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildModel } from '../public/lib/model.js';
-import { linkSiblings, linkSpouses, setParent, wouldCreateParentCycle } from '../public/lib/relationships.js';
+import { buildModel, serialize } from '../public/lib/model.js';
+import { linkSiblings, linkSpouses, setParent, unlinkParentChild, unlinkSpouses, wouldCreateParentCycle } from '../public/lib/relationships.js';
 
 const family = () => buildModel({
   people: [
@@ -55,4 +55,29 @@ test('sibling commands are symmetric, deduplicated, and reject self and parent l
   assert.throws(() => linkSiblings(model, 'child', 'old-parent'), { code: 'EPARENTSIBLING' });
   assert.throws(() => setParent(model, 'new-parent', 'grandparent', '_father'), { code: 'EPARENTSIBLING' });
   assert.deepEqual(model.byId.get('child')._siblings, []);
+});
+
+test('unlink commands remove links on both sides and keep both people', () => {
+  const model = family();
+  linkSpouses(model, 'old-parent', 'new-parent');
+  unlinkSpouses(model, 'new-parent', 'old-parent');
+  assert.deepEqual(model.byId.get('old-parent')._spouses, []);
+  assert.deepEqual(model.byId.get('new-parent')._spouses, []);
+
+  unlinkParentChild(model, 'old-parent', 'child');
+  assert.equal(model.byId.get('child')._father, null);
+  assert.ok(!model.byId.get('old-parent')._children.includes('child'));
+  assert.equal(model.people.length, 4, 'nobody is deleted');
+  assert.throws(() => unlinkSpouses(model, 'child', 'missing'), { code: 'ENOPERSON' });
+});
+
+test('removed links stay removed after a save and reload', () => {
+  const model = family();
+  linkSpouses(model, 'old-parent', 'new-parent');
+  unlinkSpouses(model, 'old-parent', 'new-parent');
+  unlinkParentChild(model, 'old-parent', 'child');
+  const reloaded = buildModel(serialize(model));
+  assert.deepEqual(reloaded.byId.get('old-parent')._spouses, []);
+  assert.deepEqual(reloaded.byId.get('old-parent')._children, []);
+  assert.equal(reloaded.byId.get('child')._father, null);
 });

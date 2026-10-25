@@ -116,6 +116,27 @@ test('cards show the current age of the living and the age at death', async ({ p
   await expect(page.locator('#pAge')).toHaveText('Age at death: 80y 11m');
 });
 
+test('a spouse link can be removed without deleting either person', async ({ page }) => {
+  await openApp(page, HOSTED);
+  await createTreeWithPerson(page, `E2E unlink ${Date.now()}`, 'Unlink Person');
+  await page.locator('.card', { hasText: 'Unlink Person' }).click();
+  await page.locator('#panel [data-add="spouse"]').click();
+  await page.locator('#apName').fill('Mistaken Spouse');
+  await page.locator('#apOk').click();
+  await page.locator('.card', { hasText: 'Unlink Person' }).click();
+
+  await page.locator('#panel [data-unlink="spouse"]').click();
+  await expect(page.locator('#confirmDialog')).toBeVisible();
+  await page.locator('#cdOk').click();
+  await expect(page.locator('#panel .chip[data-go]', { hasText: 'Mistaken Spouse' })).toHaveCount(0);
+  await expect(page.locator('#saveStatus')).toContainText('Saved', { timeout: 5_000 });
+
+  await page.reload();
+  await page.locator('.card', { hasText: 'Unlink Person' }).click();
+  await expect(page.locator('#panel .chip[data-go]', { hasText: 'Mistaken Spouse' })).toHaveCount(0);
+  await expect(page.locator('#stats')).toContainText('2 people');
+});
+
 test('an edit made during an in-flight save is persisted by a later generation', async ({ page }) => {
   let writes = 0;
   let releaseFirst;

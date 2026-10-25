@@ -104,6 +104,8 @@ The app opens with an example tree (the immediate relatives of **Guy de Lusignan
   `+` buttons for each missing parent (above), a spouse (right edge) and a new
   child (below). While typing a name you can link an existing person instead of
   creating a duplicate.
+- **Remove a link** with the `✕` next to a father, mother, spouse or child in the
+  panel. Only the relationship is removed; both people stay in the tree.
 - **Views:** *Whole Family*, *Close Family*, *Ancestors* (segmented control, top).
 - **Search** anyone (top-left), including people not connected to the current view.
 - **Dark mode** and **EN / TR** language toggle in the header.

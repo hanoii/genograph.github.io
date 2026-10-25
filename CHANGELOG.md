@@ -11,6 +11,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   death for the deceased, in years and months (for example `82y 2m`). Ages from
   uncertain or partial dates are marked `~`; no age is shown when it cannot be
   worked out.
+- Remove a parent, spouse or child link from the side panel with the `✕` next
+  to the relationship, after a confirmation. Both people stay in the tree, and
+  the link is removed on both sides.
 
 ### Fixed
 - Link a new sibling to a person who has no recorded parents. Siblings without
