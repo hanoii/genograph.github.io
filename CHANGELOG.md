@@ -6,6 +6,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Remove a parent, spouse or child link from the side panel with the `✕` next
+  to the relationship, after a confirmation. Both people stay in the tree, and
+  the link is removed on both sides.
+
 ## [1.2.3] - 2026-08-23
 
 ### Added

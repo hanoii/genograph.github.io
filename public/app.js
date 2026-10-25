@@ -14,7 +14,7 @@ import { layout, CARD_W, CARD_H } from './lib/layout.js';
 import { pickStore, openFolder, supportsFolders } from './lib/storage.js';
 import { initialLanguage } from './lib/i18n.js';
 import { SaveCoordinator } from './lib/autosave.js';
-import { assertCanSetParent, linkSpouses, setParent } from './lib/relationships.js';
+import { assertCanSetParent, linkSpouses, setParent, unlinkParentChild, unlinkSpouses } from './lib/relationships.js';
 
 /* Browsers ignore frame-ancestors in a <meta> CSP, and the static host cannot
  * send headers, so refuse to run framed (anti-clickjacking) here instead.
@@ -63,6 +63,8 @@ const I18N = {
     cause_suicide: 'İntihar', cause_unknown: 'Bilinmiyor', cause_other: 'Diğer',
     people: 'kişi', shown: 'görünüyor', fit: 'Sığdır', home: 'Kök kişiye dön',
     addedSnack: 'Eklendi: {n}', linkedSnack: 'Bağlandı: {n}', deletedSnack: 'Silindi: {n}',
+    unlinkTitle: 'Bağlantı kaldırılsın mı?', unlinkMsg: '{a} ile {b} artık bağlı olmayacak. İki kişi de ağaçta kalır.',
+    unlinkOk: 'Bağlantıyı kaldır', unlinkLabel: '{n} bağlantısını kaldır', unlinkedSnack: 'Bağlantı kaldırıldı: {a} – {b}',
     fabTitle: 'Yeni kişi ekle', dblFocus: 'Çift tıkla: bu kişiye odaklan', closePanel: 'Kapat',
     noResults: 'Sonuç yok', offTree: 'ağaç dışı', born: 'd.', died: 'ö.',
     // tree library
@@ -145,6 +147,8 @@ const I18N = {
     cause_suicide: 'Suicide', cause_unknown: 'Unknown', cause_other: 'Other',
     people: 'people', shown: 'shown', fit: 'FIT', home: 'Back to the root person',
     addedSnack: 'Added: {n}', linkedSnack: 'Linked: {n}', deletedSnack: 'Deleted: {n}',
+    unlinkTitle: 'Remove link?', unlinkMsg: '{a} and {b} will no longer be linked. Both people stay in the tree.',
+    unlinkOk: 'Remove link', unlinkLabel: 'Remove link to {n}', unlinkedSnack: 'Link removed: {a} – {b}',
     fabTitle: 'Add person', dblFocus: 'Double-click to focus on this person', closePanel: 'Close',
     noResults: 'No results', offTree: 'off-tree', born: 'b.', died: 'd.',
     // tree library
@@ -654,23 +658,28 @@ function renderPanel() {
   const p = model.byId.get(selectedId);
   const nameOf = id => model.byId.get(id)?.name || '?';
   const chip = (id, extra) => `<button class="chip${extra || ''}" data-go="${esc(id)}">${esc(nameOf(id))}</button>`;
+  // a chip with a remove-link button; rel is this person's relation to p
+  const linked = (id, rel) => {
+    const label = esc(t('unlinkLabel', { n: nameOf(id) }));
+    return `<span class="chipgrp">${chip(id)}<button class="chipx" data-unlink="${rel}" data-id="${esc(id)}" title="${label}" aria-label="${label}">✕</button></span>`;
+  };
   const ghost = n => `<span class="chip ghost" title="?">${esc(n)}</span>`;
 
   let badge = '';
   if (p.id === rootId) badge = `<span class="badge root">${t('rootBadge')}</span>`;
   else if (p.lineage === 'direct_ancestor') badge = `<span class="badge anc">${t('ancBadge')}</span>`;
 
-  const fatherHtml = p._father ? chip(p._father)
+  const fatherHtml = p._father ? linked(p._father, 'parent')
     : (p._unres.father ? ghost(p._unres.father)
       : `<button class="chip addchip" data-add="father">+ ${t('addFather')}</button>`);
-  const motherHtml = p._mother ? chip(p._mother)
+  const motherHtml = p._mother ? linked(p._mother, 'parent')
     : (p._unres.mother ? ghost(p._unres.mother)
       : `<button class="chip addchip" data-add="mother">+ ${t('addMother')}</button>`);
   const siblingHtml = [...siblingIds(model, p).map(id => chip(id)),
     `<button class="chip addchip" data-add="sibling">+ ${t('addSibling')}</button>`].join('');
-  const spouseHtml = [...p._spouses.map(id => chip(id)), ...p._unres.spouses.map(ghost),
+  const spouseHtml = [...p._spouses.map(id => linked(id, 'spouse')), ...p._unres.spouses.map(ghost),
     `<button class="chip addchip" data-add="spouse">+ ${t('addSpouse')}</button>`].join('');
-  const childHtml = [...birthSortIds(model, p._children).map(id => chip(id)), ...p._unres.children.map(ghost),
+  const childHtml = [...birthSortIds(model, p._children).map(id => linked(id, 'child')), ...p._unres.children.map(ghost),
     `<button class="chip addchip" data-add="child">+ ${t('addChild')}</button>`].join('');
 
   panel.innerHTML = `
@@ -772,6 +781,9 @@ function renderPanel() {
   });
   panel.querySelectorAll('[data-add]').forEach(btn => {
     btn.onclick = () => openAddDialog(btn.dataset.add, p.id);
+  });
+  panel.querySelectorAll('[data-unlink]').forEach(btn => {
+    btn.onclick = () => confirmUnlink(p.id, btn.dataset.id, btn.dataset.unlink);
   });
 }
 function touch(p) { p.updated_at = new Date().toISOString(); }
@@ -997,6 +1009,22 @@ function confirmDelete(id) {
   const msgKey = storeMode === 'idb' ? 'confirmDelMsgBrowser' : 'confirmDelMsg';
   askConfirm(t('confirmDelTitle'), t(msgKey, { n: p.name }), t('del')).then(ok => {
     if (ok) deletePerson(id);
+  });
+}
+/* Remove one relationship link (both people stay); rel is otherId's relation to id. */
+function confirmUnlink(id, otherId, rel) {
+  const a = model.byId.get(id), b = model.byId.get(otherId);
+  if (!a || !b) return;
+  askConfirm(t('unlinkTitle'), t('unlinkMsg', { a: a.name, b: b.name }), t('unlinkOk')).then(ok => {
+    if (!ok || !model.byId.has(id) || !model.byId.has(otherId)) return;
+    const changed = rel === 'spouse' ? unlinkSpouses(model, id, otherId)
+      : rel === 'parent' ? unlinkParentChild(model, otherId, id)
+      : unlinkParentChild(model, id, otherId);
+    Object.values(changed).forEach(touch);
+    markDirty();
+    renderTree();
+    renderPanel();
+    snack(t('unlinkedSnack', { a: a.name, b: b.name }));
   });
 }
 function deletePerson(id) {
