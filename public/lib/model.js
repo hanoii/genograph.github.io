@@ -97,13 +97,17 @@ export function birthSortIds(model, ids) {
     .map(x => x[0]);
 }
 
-/** The other children of this person's father and/or mother (deduped, birth-sorted). */
+/**
+ * The other children of this person's father and/or mother, plus explicitly
+ * linked siblings (used when the shared parents are unknown); deduped, birth-sorted.
+ */
 export function siblingIds(model, p) {
   const ids = new Set();
   for (const parId of [p._father, p._mother]) {
     const parent = parId && model.byId.get(parId);
     if (parent) for (const c of parent._children) if (c !== p.id) ids.add(c);
   }
+  for (const s of p._siblings) if (s !== p.id && model.byId.has(s)) ids.add(s);
   return birthSortIds(model, [...ids]);
 }
 
@@ -221,7 +225,7 @@ export function validateTree(data) {
     for (const field of ['father_id', 'mother_id']) {
       if (person[field] !== undefined && person[field] !== null) validateReference(person[field], `${base}.${field}`);
     }
-    for (const field of ['spouse_ids', 'children_ids']) {
+    for (const field of ['spouse_ids', 'children_ids', 'sibling_ids']) {
       const refs = person[field];
       if (refs === undefined) continue;
       if (!Array.isArray(refs) || refs.length > TREE_LIMITS.maxRelationshipsPerPerson) {
@@ -229,7 +233,7 @@ export function validateTree(data) {
       }
       refs.forEach((ref, refIndex) => validateReference(ref, `${base}.${field}[${refIndex}]`));
     }
-    for (const field of ['father', 'mother', 'spouse', 'children']) {
+    for (const field of ['father', 'mother', 'spouse', 'children', 'siblings']) {
       const refs = person[field];
       if (refs === undefined || refs === null) continue;
       const values = Array.isArray(refs) ? refs : [refs];
@@ -258,10 +262,10 @@ export function isValidTree(data) {
  *
  * - Assigns stable ids to people that lack one.
  * - Normalizes dates and splits legacy place/country strings.
- * - Resolves father/mother/spouse/children to ids, preferring explicit
+ * - Resolves father/mother/spouse/children/siblings to ids, preferring explicit
  *   *_id fields, then disambiguating duplicate names by reciprocity.
  * - Records still-ambiguous name references on `_unres` so nothing is lost.
- * - Mirrors relationships (parent<->child, spouse<->spouse).
+ * - Mirrors relationships (parent<->child, spouse<->spouse, sibling<->sibling).
  *
  * Mutates the person objects inside `raw.people` (adds `_`-prefixed runtime
  * fields and normalized values) and returns { raw, people, byId }.
@@ -281,6 +285,7 @@ export function buildModel(raw) {
     for (const f of ['father_id', 'mother_id']) if (p[f] != null) p[f] = String(p[f]);
     if (Array.isArray(p.spouse_ids)) p.spouse_ids = p.spouse_ids.map(v => String(v));
     if (Array.isArray(p.children_ids)) p.children_ids = p.children_ids.map(v => String(v));
+    if (Array.isArray(p.sibling_ids)) p.sibling_ids = p.sibling_ids.map(v => String(v));
   });
 
   const byId = new Map(people.map(p => [p.id, p]));
@@ -310,8 +315,8 @@ export function buildModel(raw) {
     splitPlaceCountry(p, 'birth_place');
     splitPlaceCountry(p, 'death_place');
     p._unres = {
-      father: null, mother: null, spouses: [], children: [],
-      fatherId: null, motherId: null, spouseIds: [], childIds: []
+      father: null, mother: null, spouses: [], children: [], siblings: [],
+      fatherId: null, motherId: null, spouseIds: [], childIds: [], siblingIds: []
     };
 
     // father / mother
@@ -361,9 +366,22 @@ export function buildModel(raw) {
         else if (!id) p._unres.children.push(cn);
       }
     }
+
+    // explicit siblings (siblings through shared parents are derived, not stored)
+    if (Array.isArray(p.sibling_ids)) {
+      p._siblings = [...new Set(p.sibling_ids.filter(id => id !== p.id && byId.has(id)))];
+      p._unres.siblingIds = [...new Set(p.sibling_ids.filter(id => id !== p.id && !byId.has(id)))];
+    } else {
+      p._siblings = [];
+      for (const sn of asArr(p.siblings)) {
+        const id = resolve(sn, c => (asArr(c.siblings).includes(p.name) ? 2 : 0));
+        if (id && id !== p.id) p._siblings.push(id);
+        else if (!id) p._unres.siblings.push(sn);
+      }
+    }
   }
 
-  // reciprocity: parents' child lists & symmetric spouses
+  // reciprocity: parents' child lists, symmetric spouses & siblings
   for (const p of people) {
     if (p._father && byId.has(p._father)) {
       const f = byId.get(p._father);
@@ -376,6 +394,10 @@ export function buildModel(raw) {
     for (const s of p._spouses) {
       const sp = byId.get(s);
       if (sp && !sp._spouses.includes(p.id)) sp._spouses.push(p.id);
+    }
+    for (const s of p._siblings) {
+      const sb = byId.get(s);
+      if (sb && !sb._siblings.includes(p.id)) sb._siblings.push(p.id);
     }
   }
 
@@ -415,7 +437,7 @@ export function setRootId(model, id) {
  */
 export function serialize(model) {
   const nameOf = id => model.byId.get(id)?.name;
-  const SKIP = new Set(['father', 'mother', 'spouse', 'children', 'father_id', 'mother_id', 'spouse_ids', 'children_ids', 'id', 'name']);
+  const SKIP = new Set(['father', 'mother', 'spouse', 'children', 'siblings', 'father_id', 'mother_id', 'spouse_ids', 'children_ids', 'sibling_ids', 'id', 'name']);
   const people = model.people.map(p => {
     const o = { id: p.id, name: p.name };
     for (const k of Object.keys(p)) {
@@ -447,6 +469,10 @@ export function serialize(model) {
     }
     const childIds = [...p._children, ...p._unres.childIds];
     if (childIds.length) o.children_ids = childIds;
+    const sibNames = [...p._siblings.map(nameOf), ...p._unres.siblings].filter(Boolean);
+    if (sibNames.length) o.siblings = sibNames;
+    const sibIds = [...p._siblings, ...p._unres.siblingIds];
+    if (sibIds.length) o.sibling_ids = sibIds;
     return o;
   });
   const raw = model.raw;

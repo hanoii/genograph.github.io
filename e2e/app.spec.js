@@ -68,6 +68,30 @@ test('hosted IndexedDB mode persists edits across reloads', async ({ page }) => 
   await expect(page.locator('#tmStorePath')).toContainText('Stored in this browser');
 });
 
+test('a sibling added to a person without parents stays linked after reload', async ({ page }) => {
+  await openApp(page, HOSTED);
+  const personName = 'Parentless Sibling';
+  await createTreeWithPerson(page, `E2E siblings ${Date.now()}`, personName);
+  await page.locator('.card', { hasText: personName }).click();
+  await page.locator('#panel [data-add="sibling"]').click();
+  await page.locator('#apName').fill('Linked Sibling');
+  await page.locator('#apOk').click();
+  await expect(page.locator('.card', { hasText: 'Linked Sibling' })).toBeVisible();
+  await expect(page.locator('#saveStatus')).toContainText('Saved', { timeout: 5_000 });
+
+  await page.reload();
+  await page.locator('.card', { hasText: personName }).click();
+  await expect(page.locator('#panel .chip[data-go]', { hasText: 'Linked Sibling' })).toBeVisible();
+
+  // a parent added later is shared by the explicitly linked sibling
+  await page.locator('#panel [data-add="father"]').click();
+  await page.locator('#apName').fill('Shared Father');
+  await page.locator('#apOk').click();
+  await expect(page.locator('#saveStatus')).toContainText('Saved', { timeout: 5_000 });
+  await page.locator('.card', { hasText: 'Linked Sibling' }).click();
+  await expect(page.locator('#panel .chip[data-go]', { hasText: 'Shared Father' })).toBeVisible();
+});
+
 test('an edit made during an in-flight save is persisted by a later generation', async ({ page }) => {
   let writes = 0;
   let releaseFirst;

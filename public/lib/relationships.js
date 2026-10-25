@@ -1,7 +1,7 @@
 /* ============================================================
  * Genograph — relationship commands (pure: no DOM)
  *
- * Keeps parent/child and spouse links reciprocal and rejects ancestry cycles
+ * Keeps parent/child, spouse and sibling links reciprocal and rejects ancestry cycles
  * before mutating the in-memory model.
  * ============================================================ */
 'use strict';
@@ -44,6 +44,9 @@ export function assertCanSetParent(model, childId, parentId, slot) {
   if (child[slot === '_father' ? '_mother' : '_father'] === parentId) {
     fail('EDUPPARENT', 'The same person cannot fill both parent roles.');
   }
+  if (child._siblings.includes(parentId)) {
+    fail('EPARENTSIBLING', 'A parent and child cannot also be siblings.');
+  }
   if (wouldCreateParentCycle(model, parentId, childId)) {
     fail('ECYCLE', 'That relationship would create an ancestry cycle.');
   }
@@ -71,5 +74,29 @@ export function linkSpouses(model, firstId, secondId) {
   const second = requirePerson(model, secondId);
   addUnique(first._spouses, secondId);
   addUnique(second._spouses, firstId);
+  return { first, second };
+}
+
+/** Validate an explicit sibling link without changing the model. */
+export function assertCanLinkSiblings(model, firstId, secondId) {
+  if (firstId === secondId) fail('ESELF', 'A person cannot be linked to themselves.');
+  const first = requirePerson(model, firstId);
+  const second = requirePerson(model, secondId);
+  if (first._father === secondId || first._mother === secondId ||
+      second._father === firstId || second._mother === firstId) {
+    fail('EPARENTSIBLING', 'A parent and child cannot also be siblings.');
+  }
+}
+
+/**
+ * Link two siblings symmetrically. Used when they share no recorded parent;
+ * siblings through a shared parent are derived and need no explicit link.
+ */
+export function linkSiblings(model, firstId, secondId) {
+  assertCanLinkSiblings(model, firstId, secondId);
+  const first = requirePerson(model, firstId);
+  const second = requirePerson(model, secondId);
+  addUnique(first._siblings, secondId);
+  addUnique(second._siblings, firstId);
   return { first, second };
 }

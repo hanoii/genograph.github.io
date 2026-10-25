@@ -14,7 +14,7 @@ import { layout, CARD_W, CARD_H } from './lib/layout.js';
 import { pickStore, openFolder, supportsFolders } from './lib/storage.js';
 import { initialLanguage } from './lib/i18n.js';
 import { SaveCoordinator } from './lib/autosave.js';
-import { assertCanSetParent, linkSpouses, setParent } from './lib/relationships.js';
+import { assertCanLinkSiblings, assertCanSetParent, linkSiblings, linkSpouses, setParent } from './lib/relationships.js';
 
 /* Browsers ignore frame-ancestors in a <meta> CSP, and the static host cannot
  * send headers, so refuse to run framed (anti-clickjacking) here instead.
@@ -914,10 +914,10 @@ function commitAdd() {
     if (!name) { $('apName').focus(); return; }
     person = {
       id: genId(), name, sex: addState.sex,
-      _father: null, _mother: null, _spouses: [], _children: [],
+      _father: null, _mother: null, _spouses: [], _children: [], _siblings: [],
       _unres: {
-        father: null, mother: null, spouses: [], children: [],
-        fatherId: null, motherId: null, spouseIds: [], childIds: []
+        father: null, mother: null, spouses: [], children: [], siblings: [],
+        fatherId: null, motherId: null, spouseIds: [], childIds: [], siblingIds: []
       }
     };
     const val = id => $(id).value.trim();
@@ -944,7 +944,7 @@ function commitAdd() {
     model.byId.set(person.id, person);
   }
   const newPerson = !existingId;
-  const parentLinks = [];
+  const parentLinks = [], siblingLinks = [];
   if (anchor && relation === 'child') {
     const anchorSlot = anchor.sex === 'F' ? '_mother' : '_father';
     parentLinks.push({ childId: person.id, parentId: anchor.id, slot: anchorSlot });
@@ -954,13 +954,31 @@ function commitAdd() {
     }
   } else if (anchor && (relation === 'father' || relation === 'mother')) {
     if (!existingId) person.sex = relation === 'father' ? 'M' : 'F';
-    parentLinks.push({ childId: anchor.id, parentId: person.id, slot: relation === 'father' ? '_father' : '_mother' });
+    const slot = relation === 'father' ? '_father' : '_mother';
+    parentLinks.push({ childId: anchor.id, parentId: person.id, slot });
+    // explicit siblings were linked because their parents were unknown, so the
+    // new parent is theirs too, unless they already have one in that role
+    for (const id of anchor._siblings) {
+      const sibling = model.byId.get(id);
+      if (sibling && !sibling[slot] && id !== person.id) parentLinks.push({ childId: id, parentId: person.id, slot });
+    }
   } else if (anchor && relation === 'sibling') {
-    if (anchor._father) parentLinks.push({ childId: person.id, parentId: anchor._father, slot: '_father' });
-    if (anchor._mother) parentLinks.push({ childId: person.id, parentId: anchor._mother, slot: '_mother' });
+    // share the anchor's known parents, but never replace a parent the person already has
+    let sharesParent = false;
+    for (const slot of ['_father', '_mother']) {
+      if (!anchor[slot]) continue;
+      if (!person[slot]) parentLinks.push({ childId: person.id, parentId: anchor[slot], slot });
+      if (!person[slot] || person[slot] === anchor[slot]) sharesParent = true;
+    }
+    // no shared parent to derive the link from: record it explicitly, joining
+    // the anchor's explicit sibling group so the siblings stay connected
+    if (!sharesParent) {
+      for (const id of [anchor.id, ...anchor._siblings]) if (id !== person.id) siblingLinks.push(id);
+    }
   }
   try {
     parentLinks.forEach(link => assertCanSetParent(model, link.childId, link.parentId, link.slot));
+    siblingLinks.forEach(id => assertCanLinkSiblings(model, person.id, id));
     const touched = new Set([person, anchor].filter(Boolean));
     for (const link of parentLinks) {
       const changed = setParent(model, link.childId, link.parentId, link.slot);
@@ -968,6 +986,10 @@ function commitAdd() {
     }
     if (anchor && relation === 'spouse') {
       const linked = linkSpouses(model, anchor.id, person.id);
+      touched.add(linked.first); touched.add(linked.second);
+    }
+    for (const id of siblingLinks) {
+      const linked = linkSiblings(model, person.id, id);
       touched.add(linked.first); touched.add(linked.second);
     }
     touched.forEach(touch);
@@ -1007,6 +1029,7 @@ function deletePerson(id) {
     if (q._mother === id) q._mother = null;
     q._spouses = q._spouses.filter(s => s !== id);
     q._children = q._children.filter(c => c !== id);
+    q._siblings = q._siblings.filter(s => s !== id);
   }
   model.people = model.people.filter(q => q.id !== id);
   model.byId.delete(id);

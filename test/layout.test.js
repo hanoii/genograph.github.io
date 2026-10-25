@@ -110,3 +110,43 @@ test('layout — children from different spouses use distinct union drops', () =
     assert.ok(segs.some(([x1, , x2, y2]) => x1 === center && x2 === center && y2 === PITCH));
   }
 });
+
+test('layout — explicit siblings of a parentless ancestor share a sibling bar', () => {
+  const model = buildModel({
+    people: [
+      { id: 'kid', name: 'Kid', father_id: 'dad', mother_id: 'mom' },
+      { id: 'dad', name: 'Dad', sex: 'M', spouse_ids: ['mom'] },
+      { id: 'mom', name: 'Mom', sex: 'F', sibling_ids: ['uncle'] },
+      { id: 'uncle', name: 'Uncle', sex: 'M' }
+    ]
+  });
+  for (const mode of ['full', 'close']) {
+    const { cards, segs } = layout(model, 'kid', mode);
+    const card = id => cards.find(candidate => candidate.id === id);
+    assert.ok(card('uncle'), `${mode}: uncle is placed`);
+    assert.equal(card('uncle').y, card('mom').y, `${mode}: uncle shares the mother's row`);
+    for (let i = 0; i < cards.length; i++) {
+      for (let j = i + 1; j < cards.length; j++) assert.ok(!overlaps(cards[i], cards[j]), `${mode}: no overlap`);
+    }
+    const bar = -PITCH - 12;
+    const [lo, hi] = [card('mom'), card('uncle')].map(c => c.x + CARD_W / 2).sort((x, y) => x - y);
+    assert.ok(segs.some(([x1, y1, x2, y2]) => y1 === bar && y2 === bar && x1 === lo && x2 === hi), `${mode}: sibling bar`);
+  }
+  assert.ok(!layout(model, 'kid', 'ancestors').cards.some(card => card.id === 'uncle'), 'ancestors mode hides siblings');
+});
+
+test('layout — an explicit sibling does not hang from the other sibling\'s parents', () => {
+  const model = buildModel({
+    people: [
+      { id: 'me', name: 'Me', father_id: 'dad', sibling_ids: ['half'] },
+      { id: 'dad', name: 'Dad', sex: 'M' },
+      { id: 'half', name: 'Half', father_id: 'other' },
+      { id: 'other', name: 'Other', sex: 'M' }
+    ]
+  });
+  const { cards, segs } = layout(model, 'me', 'full');
+  const half = cards.find(card => card.id === 'half');
+  const hc = half.x + CARD_W / 2;
+  assert.ok(!segs.some(([x1, y1, x2, y2]) => x1 === hc && x2 === hc && y1 === -26 && y2 === 0), 'no parent drop to the explicit sibling');
+  assert.ok(segs.some(([x1, y1, x2, y2]) => x1 === hc && x2 === hc && y1 === -12 && y2 === 0), 'sibling bar drop instead');
+});

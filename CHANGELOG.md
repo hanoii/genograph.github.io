@@ -6,6 +6,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Link a new sibling to a person who has no recorded parents. Siblings without
+  a shared parent are now stored as explicit, reciprocal `sibling_ids` links and
+  drawn in the same row with their own sibling bar, instead of being added
+  unlinked.
+- Linking an existing person as a sibling only fills their missing parent roles
+  and no longer replaces parents they already have.
+
 ## [1.2.3] - 2026-08-23
 
 ### Added
