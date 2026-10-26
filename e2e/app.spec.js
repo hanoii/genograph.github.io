@@ -182,10 +182,16 @@ test('printing follows the selected view and focus person', async ({ page }) => 
 
   await page.locator('#printBtn').click();
   await page.locator('#prCompact').check();
-  await expect(page.locator('#prNotes')).toBeHidden();
   await page.locator('#prOk').click();
   const compact = await page.evaluate(() => window.__printed);
   expect(compact).toContain('<table class="rp-table">');
   expect(compact).not.toContain('rp-entry');
+
+  // notes belong to the detailed layout: ticking them switches back to it
+  await page.locator('#printBtn').click();
+  await expect(page.locator('#prCompact')).toBeChecked();
+  await page.locator('#prNotes').check();
+  await expect(page.locator('#prDetailed')).toBeChecked();
+  await page.locator('#prCancel').click();
   await expect(page.locator('#printView')).toBeHidden();
 });
