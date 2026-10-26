@@ -159,8 +159,25 @@ test('viewReport: compact prints one table row per person, without notes', () =>
   const html = report(family(), 'a', 'full', { compact: true });
   assert.doesNotMatch(html, /rp-entry|rp-notes|stories/);
   assert.equal((html.match(/<tr( class="rp-focus")?><td class="rp-n">/g) || []).length, 5);
-  assert.match(html, /<tr class="rp-focus"><td class="rp-n">\d+<\/td><td>Anna Old<\/td><td>4 Mar 1900<\/td><td>5 Mar 1980<\/td><td>Gus Grand <span class="rp-ref">\[\d+\]<\/span><\/td><td>Bob Old/);
+  assert.match(html, /<tr class="rp-focus"><td class="rp-n">\d+<\/td><td>Anna Old<\/td><td>4 Mar 1900<\/td><td>5 Mar 1980<\/td><td>80<\/td><td>Gus Grand <span class="rp-ref">\[\d+\]<\/span><\/td><td>Bob Old/);
   const living = report(family(), 'a', 'full', { compact: true, hideLiving: true });
-  assert.match(living, /<td>Cara Young<\/td><td><\/td><td>reportLivingShort<\/td>/);
+  assert.match(living, /<td>Cara Young<\/td><td><\/td><td>reportLivingShort<\/td><td><\/td>/);
+  // the living get their current age as of the print date; a bare birth year gives an approximate one
+  assert.match(html, /<td>Cara Young<\/td><td>1990, Lyon, France<\/td><td><\/td><td>reportAbout 35<\/td>/);
   assert.doesNotMatch(living, /Lyon/);
+});
+
+test('viewReport: the living get their current age, the deceased their age at death, infants in months', () => {
+  const model = buildModel({
+    people: [
+      { id: 'p', name: 'Pat Parent', sex: 'F', birth_date: '1990.01.01', children_ids: ['b'] },
+      { id: 'b', name: 'Baby Born', sex: 'M', birth_date: '2026.05.10', mother_id: 'p' },
+      { id: 'q', name: 'Old Quill', sex: 'M', birth_date: '1900', death_date: '1980', deceased: true }
+    ]
+  });
+  const html = report(model, 'p', 'full');
+  assert.match(entryOf(html, 'Pat Parent'), /<dt>age<\/dt><dd>36<\/dd>/);
+  assert.match(entryOf(html, 'Baby Born'), /<dt>age<\/dt><dd>reportMonths\(5\)<\/dd>/);
+  assert.doesNotMatch(entryOf(html, 'Pat Parent'), /ageAtDeath/);
+  assert.doesNotMatch(entryOf(report(model, 'p', 'full', { hideLiving: true }), 'Pat Parent'), /<dt>age</);
 });

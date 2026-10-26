@@ -92,6 +92,13 @@ function context(model, opts) {
     return [pl ? pl + (p[key + '_place_uncertain'] ? ` (${t('uncertain')})` : '') : '', country || ''].filter(Boolean).join(', ');
   };
   const event = (p, key) => [date(p[key + '_date'], p[key + '_date_uncertain']), place(p, key)].filter(Boolean).join(', ');
+  // age at death, or the current age of the living, as of the print date
+  const age = p => {
+    const a = hidden(p) ? null : ageOf(p, today);
+    if (!a) return '';
+    if (a.years) return about(a.approx) + a.years;
+    return a.months == null ? '' : about(a.approx) + t('reportMonths', { m: a.months });
+  };
   const span = p => {
     if (hidden(p)) return '';
     const b = year(p.birth_date, p.birth_date_uncertain), d = year(p.death_date, p.death_date_uncertain);
@@ -100,14 +107,13 @@ function context(model, opts) {
     if (d) return `${t('died')} ${d}`;
     return p.deceased ? '†' : '';
   };
-  return { t, lang, today, notes, hidden, about, event, span, model };
+  return { t, lang, today, notes, hidden, about, event, age, span, model };
 }
 
 /* label/value rows describing one person; empty values are left out */
 function facts(c, p) {
   const { t } = c;
   if (c.hidden(p)) return [[t('reportStatus'), t('reportLiving')]];
-  const age = p.death_date && ageOf(p, c.today);
   const cause = [p.death_cause ? t('cause_' + p.death_cause) : '', p.death_cause_detail || ''].filter(Boolean).join(': ');
   return [
     [t('aliases'), p.aliases],
@@ -115,7 +121,7 @@ function facts(c, p) {
     [t('sex'), p.sex === 'M' ? t('male') : p.sex === 'F' ? t('female') : ''],
     [t('reportBorn'), c.event(p, 'birth')],
     [t('reportDied'), c.event(p, 'death')],
-    [t('ageAtDeath'), age?.years ? c.about(age.approx) + age.years : ''],
+    [p.death_date ? t('ageAtDeath') : t('age'), c.age(p)],
     [t('deathCause'), cause],
     [t('reportBuried'), p.burial_place],
     [t('occupation'), p.occupation]
@@ -176,10 +182,11 @@ export function viewReport(model, cards, focusId, opts) {
     return `<tr${id === focusId ? ' class="rp-focus"' : ''}><td class="rp-n">${num.get(id)}</td><td>${esc(p.name || '?')}</td>` +
       `<td>${hide ? '' : esc(c.event(p, 'birth'))}</td>` +
       `<td>${hide ? esc(t('reportLivingShort')) : esc(c.event(p, 'death') || (p.deceased ? '†' : ''))}</td>` +
+      `<td>${esc(c.age(p))}</td>` +
       `<td>${parents}</td><td>${refs(p._spouses, p._unres?.spouses)}</td></tr>`;
   };
   const table = ids => `<table class="rp-table"><thead><tr><th class="rp-n">#</th><th>${esc(t('name'))}</th>` +
-    `<th>${esc(t('reportBorn'))}</th><th>${esc(t('reportDied'))}</th><th>${esc(t('reportParents'))}</th>` +
+    `<th>${esc(t('reportBorn'))}</th><th>${esc(t('reportDied'))}</th><th>${esc(t('age'))}</th><th>${esc(t('reportParents'))}</th>` +
     `<th>${esc(t('spouses'))}</th></tr></thead><tbody>${ids.map(line).join('')}</tbody></table>`;
   const printed = formatDate(`${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`, lang);
   const head = `<header class="rp-head"><h1>${esc(opts.title || t('title'))}</h1>` +
