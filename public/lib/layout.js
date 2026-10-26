@@ -19,10 +19,15 @@ export const CARD_W = 180, CARD_H = 72, H_GAP = 18, PITCH = 175, MAXDEPTH = 30;
 export const MAX_LAYOUT_WORK = 40_000, MAX_LAYOUT_CARDS = 12_000;
 
 /**
+ * `heights` optionally maps a person id to the rendered height of a card taller than
+ * CARD_H (cards grow with wrapped text); lines then leave from each card's real bottom.
+ * Card positions never depend on it.
  * @returns {{cards: {id,x,y}[], segs: [number,number,number,number][], bbox: {minX,minY,maxX,maxY}}}
  */
-export function layout(model, focusId, mode) {
+export function layout(model, focusId, mode, heights = null) {
   const by = id => model.byId.get(id);
+  // a card's height for drawing lines, kept clear of the bus above the next generation
+  const hOf = id => Math.min(Math.max(CARD_H, heights?.get(id) ?? CARD_H), PITCH - 50);
   const cards = [], segs = [];
   let work = 0;
   const spend = () => {
@@ -72,16 +77,18 @@ export function layout(model, focusId, mode) {
     return s;
   };
 
-  // marriage connector between two card centers on the same row; returns drop point
-  function marriage(cx1, cx2, gen) {
-    const top = -gen * PITCH, mid = top + CARD_H / 2, bot = top + CARD_H;
-    const l = Math.min(cx1, cx2), r = Math.max(cx1, cx2);
+  // marriage connector between two cards (center, person id) on the same row; returns drop point
+  function marriage(cx1, cx2, gen, id1, id2) {
+    const top = -gen * PITCH, mid = top + CARD_H / 2;
+    const [l, r] = cx1 <= cx2 ? [cx1, cx2] : [cx2, cx1];
     if (r - l <= CARD_W + H_GAP + 12) {
       seg(l + CARD_W / 2, mid, r - CARD_W / 2, mid);
       return { x: (l + r) / 2, y: mid };
     }
-    const rail = bot + 12;
-    seg(l, bot, l, rail); seg(r, bot, r, rail); seg(l, rail, r, rail);
+    // apart: a rail under both cards, clear of the taller one
+    const [lb, rb] = (cx1 <= cx2 ? [id1, id2] : [id2, id1]).map(id => top + hOf(id));
+    const rail = Math.max(lb, rb) + 12;
+    seg(l, lb, l, rail); seg(r, rb, r, rail); seg(l, rail, r, rail);
     return { x: (l + r) / 2, y: rail };
   }
   function dropToChildren(drop, childCenters, childGen) {
@@ -152,7 +159,7 @@ export function layout(model, focusId, mode) {
         for (const s of spouses) {
           addCard(s, sx, gen);
           const sc = sx + CARD_W / 2;
-          drops.set(s, marriage(pc, sc, gen));
+          drops.set(s, marriage(pc, sc, gen, pid, s));
           sx += step;
         }
         if (kidB.length) {
@@ -167,7 +174,7 @@ export function layout(model, focusId, mode) {
             if (!groups.has(partner)) groups.set(partner, []);
             groups.get(partner).push(cc[index]);
           });
-          const ownDrop = { x: pc, y: -gen * PITCH + CARD_H };
+          const ownDrop = { x: pc, y: -gen * PITCH + hOf(pid) };
           for (const [partner, centers] of groups) {
             dropToChildren((partner && drops.get(partner)) || ownDrop, centers, gen - 1);
           }
@@ -312,8 +319,8 @@ export function layout(model, focusId, mode) {
           if (rowIds[i] === pid) selfC = c;
         });
         if (fC != null || mC != null) {
-          const d = (fC != null && mC != null) ? marriage(fC, mC, gen + 1)
-            : { x: fC ?? mC, y: -(gen + 1) * PITCH + CARD_H };
+          const d = (fC != null && mC != null) ? marriage(fC, mC, gen + 1, faId, moId)
+            : { x: fC ?? mC, y: -(gen + 1) * PITCH + hOf(fC != null ? faId : moId) };
           dropToChildren(d, centers, gen);
         }
         if (linkedCenters.length) siblingBar([selfC, ...linkedCenters], gen);
@@ -330,7 +337,7 @@ export function layout(model, focusId, mode) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const c of cards) {
     minX = Math.min(minX, c.x); maxX = Math.max(maxX, c.x + CARD_W);
-    minY = Math.min(minY, c.y); maxY = Math.max(maxY, c.y + CARD_H);
+    minY = Math.min(minY, c.y); maxY = Math.max(maxY, c.y + hOf(c.id));
   }
   if (!cards.length) { minX = minY = 0; maxX = maxY = 1; }
   return { cards, segs, bbox: { minX, minY, maxX, maxY } };
