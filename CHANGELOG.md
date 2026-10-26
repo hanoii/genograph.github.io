@@ -13,6 +13,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   birth-ordered siblings.
 - Draw each person once even when they are reachable twice, such as a spouse
   who is also a sibling or a cousin, instead of duplicating their card.
+- Keep the line from the parents straight down to the focus person when cousins
+  fill the row on their spouse's side: the spouse moves to the other side
+  instead of the line stepping sideways to reach the person.
 
 ## [1.2.3] - 2026-08-23
 
