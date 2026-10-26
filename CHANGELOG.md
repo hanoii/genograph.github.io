@@ -15,6 +15,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   to the relationship, after a confirmation. Both people stay in the tree, and
   the link is removed on both sides.
 
+### Changed
+- Close Family now also shows the focused person's spouse(s) and children (one
+  generation down), not only their ancestors and the ancestors' siblings.
+
 ### Fixed
 - Link a new sibling to a person who has no recorded parents. Siblings without
   a shared parent are now stored as explicit, reciprocal `sibling_ids` links and
