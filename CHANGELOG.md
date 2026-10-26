@@ -11,6 +11,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   death for the deceased, in years and months (for example `82y 2m`). Ages from
   uncertain or partial dates are marked `~`; no age is shown when it cannot be
   worked out.
+- Print the current view, or save it as a PDF, with the printer button in the
+  header (or `Ctrl`/`Cmd`+`P`). The printout follows the selected view (*Whole
+  Family*, *Close Family* or *Ancestors*) and focus person, one section per
+  generation in the order the cards are drawn, with each person's facts,
+  relatives cross-referenced by number, and notes. Notes can be left out and the
+  details of living people withheld.
 
 ## [1.2.3] - 2026-08-23
 
