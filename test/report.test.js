@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { buildModel } from '../public/lib/model.js';
 import { layout } from '../public/lib/layout.js';
-import { isLiving, formatDate, generationRows, viewReport } from '../public/lib/report.js';
+import { isLiving, formatDate, generationRows, ahnentafel, viewReport } from '../public/lib/report.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EXAMPLE = path.join(__dirname, '..', 'examples', 'lusignan.json');
@@ -124,4 +124,43 @@ test('viewReport renders each view of the bundled example', () => {
     assert.equal((html.match(/class="rp-entry/g) || []).length, new Set(cards.map(c => c.id)).size, mode);
     assert.match(html, /Hugh VIII de Lusignan/);
   }
+});
+
+test('ahnentafel: focus 1, father 2n, mother 2n + 1, lowest number kept on pedigree collapse', () => {
+  // cousins married: m and f share the grandfather g
+  const model = buildModel({
+    people: [
+      { id: 'me', name: 'Me', father_id: 'f', mother_id: 'm' },
+      { id: 'f', name: 'Father', sex: 'M', father_id: 'g' },
+      { id: 'm', name: 'Mother', sex: 'F', father_id: 'u', mother_id: 'gm' },
+      { id: 'u', name: 'Uncle', sex: 'M', father_id: 'g' },
+      { id: 'g', name: 'Grandfather', sex: 'M' },
+      { id: 'gm', name: 'Grandmother', sex: 'F' }
+    ]
+  });
+  const num = ahnentafel(model, 'me', ['me', 'f', 'm', 'u', 'g', 'gm']);
+  assert.deepEqual(Object.fromEntries(num), { me: 1, f: 2, m: 3, g: 4, u: 6, gm: 7 });
+  // people left out of the view are skipped, and so are their ancestors
+  assert.deepEqual(Object.fromEntries(ahnentafel(model, 'me', ['me', 'm', 'gm'])), { me: 1, m: 3, gm: 7 });
+});
+
+test('viewReport: Ahnentafel numbering orders each generation and is explained in the header', () => {
+  const model = loadExample();
+  const html = viewReport(model, layout(model, 'p1', 'ancestors').cards, 'p1', opts({ ahnentafel: true }));
+  assert.match(html, /reportAhnentafel/);
+  assert.match(html, /value="1"><h3><span class="rp-num">1\.<\/span> Guy de Lusignan/);
+  assert.match(html, /value="2"><h3><span class="rp-num">2\.<\/span> Hugh VIII de Lusignan/);
+  assert.match(html, /value="3"><h3><span class="rp-num">3\.<\/span> Bourgogne de Rancon/);
+  assert.match(entryOf(html, 'Guy de Lusignan'), /Hugh VIII de Lusignan <span class="rp-ref">\[2\]/);
+  assert.ok(html.indexOf('</span> Guy de Lusignan') < html.indexOf('</span> Hugh VIII de Lusignan'), 'ascending: the focus person first');
+});
+
+test('viewReport: compact prints one table row per person, without notes', () => {
+  const html = report(family(), 'a', 'full', { compact: true });
+  assert.doesNotMatch(html, /rp-entry|rp-notes|stories/);
+  assert.equal((html.match(/<tr( class="rp-focus")?><td class="rp-n">/g) || []).length, 5);
+  assert.match(html, /<tr class="rp-focus"><td class="rp-n">\d+<\/td><td>Anna Old<\/td><td>4 Mar 1900<\/td><td>5 Mar 1980<\/td><td>Gus Grand <span class="rp-ref">\[\d+\]<\/span><\/td><td>Bob Old/);
+  const living = report(family(), 'a', 'full', { compact: true, hideLiving: true });
+  assert.match(living, /<td>Cara Young<\/td><td><\/td><td>reportLivingShort<\/td>/);
+  assert.doesNotMatch(living, /Lyon/);
 });

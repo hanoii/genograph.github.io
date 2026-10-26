@@ -15,8 +15,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   header (or `Ctrl`/`Cmd`+`P`). The printout follows the selected view (*Whole
   Family*, *Close Family* or *Ancestors*) and focus person, one section per
   generation in the order the cards are drawn, with each person's facts,
-  relatives cross-referenced by number, and notes. Notes can be left out and the
-  details of living people withheld.
+  relatives cross-referenced by number, and notes. A *compact* option prints one
+  table line per person instead, and the Ancestors view uses Ahnentafel numbers
+  (father 2n, mother 2n+1). Notes can be left out and the details of living
+  people withheld.
 
 ## [1.2.3] - 2026-08-23
 

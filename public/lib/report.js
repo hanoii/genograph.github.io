@@ -53,6 +53,25 @@ export function generationRows(cards, focusId) {
   return [...rows].map(([gen, ids]) => ({ gen, ids }));
 }
 
+/**
+ * Ahnentafel numbers for the given people: the focus person is 1, anyone's
+ * father is twice their number and their mother twice plus one. An ancestor
+ * reached through more than one line keeps the lowest number.
+ */
+export function ahnentafel(model, focusId, ids) {
+  const want = new Set(ids), num = new Map();
+  // breadth-first, so numbers are assigned in increasing order
+  const queue = [[focusId, 1]];
+  for (let i = 0; i < queue.length; i++) {
+    const [id, n] = queue[i];
+    if (!want.has(id) || num.has(id)) continue;
+    num.set(id, n);
+    const p = model.byId.get(id);
+    queue.push([p._father, 2 * n], [p._mother, 2 * n + 1]);
+  }
+  return num;
+}
+
 /** Heading for a generation row relative to the focus person. */
 function generationLabel(t, gen, name) {
   if (gen === 0) return t('reportGen0', { n: name });
@@ -111,15 +130,24 @@ function notesHtml(c, p) {
 /**
  * A report of the people placed by the current view, one section per
  * generation, each person numbered with facts, relatives (cross-referenced by
- * number when they are in the report) and notes.
+ * number when they are in the report) and notes; or, when compact, a table
+ * with one line per person.
  * cards: the layout's placed cards ({ id, x, y }).
- * opts: { t, lang, today, title, note, view, notes, hideLiving }.
+ * opts: { t, lang, today, title, note, view, notes, hideLiving, compact, ahnentafel }.
  */
 export function viewReport(model, cards, focusId, opts) {
   const c = context(model, opts);
   const { t, lang, today } = c;
   const rows = generationRows(cards, focusId).filter(r => (r.ids = r.ids.filter(id => model.byId.has(id))).length);
-  const num = new Map(rows.flatMap(r => r.ids).map((id, i) => [id, i + 1]));
+  const ids = rows.flatMap(r => r.ids);
+  let num;
+  if (opts.ahnentafel) {
+    num = ahnentafel(model, focusId, ids);
+    let next = Math.max(0, ...num.values());
+    for (const id of ids) if (!num.has(id)) num.set(id, ++next);
+    for (const r of rows) r.ids.sort((a, b) => num.get(a) - num.get(b));
+    rows.reverse();   // an Ahnentafel list reads in ascending order, from the focus person up
+  } else num = new Map(ids.map((id, i) => [id, i + 1]));
   const focus = model.byId.get(focusId);
   const ref = id => {
     const q = model.byId.get(id);
@@ -142,12 +170,24 @@ export function viewReport(model, cards, focusId, opts) {
       (rows.length ? `<dl class="rp-facts">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>` : '') +
       notesHtml(c, p) + '</li>';
   };
+  const line = id => {
+    const p = model.byId.get(id), hide = c.hidden(p);
+    const parents = refs([p._father, p._mother].filter(Boolean), [p._unres?.father, p._unres?.mother].filter(Boolean));
+    return `<tr${id === focusId ? ' class="rp-focus"' : ''}><td class="rp-n">${num.get(id)}</td><td>${esc(p.name || '?')}</td>` +
+      `<td>${hide ? '' : esc(c.event(p, 'birth'))}</td>` +
+      `<td>${hide ? esc(t('reportLivingShort')) : esc(c.event(p, 'death') || (p.deceased ? '†' : ''))}</td>` +
+      `<td>${parents}</td><td>${refs(p._spouses, p._unres?.spouses)}</td></tr>`;
+  };
+  const table = ids => `<table class="rp-table"><thead><tr><th class="rp-n">#</th><th>${esc(t('name'))}</th>` +
+    `<th>${esc(t('reportBorn'))}</th><th>${esc(t('reportDied'))}</th><th>${esc(t('reportParents'))}</th>` +
+    `<th>${esc(t('spouses'))}</th></tr></thead><tbody>${ids.map(line).join('')}</tbody></table>`;
   const printed = formatDate(`${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`, lang);
   const head = `<header class="rp-head"><h1>${esc(opts.title || t('title'))}</h1>` +
     `<p class="rp-sub">${esc(`${opts.view}: ${focus?.name || '?'} · ${t('reportPeople', { n: num.size })}`)}</p>` +
     (opts.note ? `<p class="rp-note">${esc(opts.note)}</p>` : '') +
+    (opts.ahnentafel ? `<p class="rp-meta">${esc(t('reportAhnentafel'))}</p>` : '') +
     `<p class="rp-meta">${esc(t('reportPrinted', { d: printed }))} · Genograph</p></header>`;
   const body = rows.map(r => `<section class="rp-gen"><h2>${esc(generationLabel(t, r.gen, focus?.name || '?'))}</h2>` +
-    `<ol class="rp-list">${r.ids.map(entry).join('')}</ol></section>`).join('');
+    (opts.compact ? table(r.ids) : `<ol class="rp-list">${r.ids.map(entry).join('')}</ol>`) + '</section>').join('');
   return `<article class="rp" lang="${esc(lang)}">${head}${body}</article>`;
 }

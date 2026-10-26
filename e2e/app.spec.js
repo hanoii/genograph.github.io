@@ -165,6 +165,8 @@ test('printing follows the selected view and focus person', async ({ page }) => 
   expect(ancestors).toContain('Parents\' generation');
   expect(ancestors).toContain('Hugh VIII de Lusignan');
   expect(ancestors).not.toContain('</span> Sibylla of Jerusalem');
+  expect(ancestors).toContain('Ahnentafel numbers');
+  expect(ancestors).toContain('<span class="rp-num">2.</span> Hugh VIII de Lusignan');
 
   await page.locator('#segFull').click();
   await page.keyboard.press('ControlOrMeta+p');
@@ -176,5 +178,13 @@ test('printing follows the selected view and focus person', async ({ page }) => 
   expect(whole).toContain('</span> Sibylla of Jerusalem');
   expect(whole).toContain('Children\'s generation');
   expect(whole).not.toContain('rp-notes');
+
+  await page.locator('#printBtn').click();
+  await page.locator('#prCompact').check();
+  await expect(page.locator('#prNotes')).toBeDisabled();
+  await page.locator('#prOk').click();
+  const compact = await page.evaluate(() => window.__printed);
+  expect(compact).toContain('<table class="rp-table">');
+  expect(compact).not.toContain('rp-entry');
   await expect(page.locator('#printView')).toBeHidden();
 });
