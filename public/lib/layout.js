@@ -17,6 +17,8 @@ import { birthSortIds } from './model.js';
 
 export const CARD_W = 180, CARD_H = 72, H_GAP = 18, PITCH = 175, MAXDEPTH = 30;
 export const MAX_LAYOUT_WORK = 40_000, MAX_LAYOUT_CARDS = 12_000;
+// half the break left in a line where it crosses another without joining it
+const CROSS_GAP = 5;
 
 /**
  * `heights` optionally maps a person id to the rendered height of a card taller than
@@ -352,5 +354,23 @@ export function layout(model, focusId, mode, heights = null) {
   if (!cards.length) { minX = minY = 0; maxX = maxY = 1; }
   for (const c of cards) rowBottom.set(c.y, Math.max(rowBottom.get(c.y) ?? 0, hOf(c.id)));
   const resolved = segs.map(sg => sg.map(v => typeof v === 'function' ? v() : v));
-  return { cards, segs: resolved, bbox: { minX, minY, maxX, maxY } };
+  // where a vertical line passes through a horizontal one without joining it (joins are
+  // always T-shaped), break the vertical around the crossing so the two do not read as one
+  const flat = resolved.filter(([x1, y1, x2, y2]) => y1 === y2 && x1 !== x2);
+  const lines = [];
+  for (const sg of resolved) {
+    const [x, y1, x2, y2] = sg;
+    if (x !== x2 || y1 === y2) { lines.push(sg); continue; }
+    const lo = Math.min(y1, y2), hi = Math.max(y1, y2);
+    const cuts = [...new Set(flat
+      .filter(([a, y, b]) => Math.min(a, b) < x && x < Math.max(a, b) && lo < y && y < hi)
+      .map(h => h[1]))].sort((a, b) => a - b);
+    let from = lo;
+    for (const y of cuts) {
+      if (y - CROSS_GAP > from) lines.push([x, from, x, y - CROSS_GAP]);
+      from = y + CROSS_GAP;
+    }
+    if (hi > from) lines.push([x, from, x, hi]);
+  }
+  return { cards, segs: lines, bbox: { minX, minY, maxX, maxY } };
 }

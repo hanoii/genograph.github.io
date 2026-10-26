@@ -50,6 +50,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Drop the line to a couple's children from the part of their joining line
   above those children. Its midpoint could land over cousins drawn between the
   couple, so both families' children looked like one set of siblings.
+- Break a line around the point where it crosses another line without joining
+  it, so a crossing no longer reads as a connection.
 
 ## [1.2.3] - 2026-08-23
 
