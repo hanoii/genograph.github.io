@@ -123,3 +123,22 @@ test('core tree controls expose keyboard and state semantics', async ({ page }) 
   await expect(page.locator('#saveStatus')).toHaveAttribute('aria-live', 'polite');
   await expect(page.locator('#searchInput')).toHaveAttribute('role', 'combobox');
 });
+
+test('family side filter narrows the view to one parent and is remembered', async ({ page }) => {
+  await openApp(page, HOSTED);
+  const father = page.locator('.card[data-id="p2"]'), mother = page.locator('.card[data-id="p3"]');
+  await expect(page.locator('#sideBoth')).toHaveAttribute('aria-pressed', 'true');
+  await expect(father).toBeVisible();
+  await expect(mother).toBeVisible();
+  await page.locator('#sideFather').click();
+  await expect(page.locator('#sideFather')).toHaveAttribute('aria-pressed', 'true');
+  await expect(father).toBeVisible();
+  await expect(mother).toHaveCount(0);
+  await page.locator('#sideMother').click();
+  await expect(father).toHaveCount(0);
+  await expect(mother).toBeVisible();
+  await page.reload();
+  await expect(page.locator('#sideMother')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#sideBoth').click();
+  await expect(father).toBeVisible();
+});

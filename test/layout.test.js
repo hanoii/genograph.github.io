@@ -110,3 +110,32 @@ test('layout — children from different spouses use distinct union drops', () =
     assert.ok(segs.some(([x1, , x2, y2]) => x1 === center && x2 === center && y2 === PITCH));
   }
 });
+
+test('layout — a side keeps only that parent\'s family', () => {
+  const model = buildModel({
+    people: [
+      { id: 'f', name: 'Focus', father_id: 'fa', mother_id: 'mo' },
+      { id: 's', name: 'Full sibling', father_id: 'fa', mother_id: 'mo' },
+      { id: 'hp', name: 'Paternal half-sibling', father_id: 'fa' },
+      { id: 'hm', name: 'Maternal half-sibling', mother_id: 'mo' },
+      { id: 'fa', name: 'Father', sex: 'M', father_id: 'ff', mother_id: 'fm' },
+      { id: 'mo', name: 'Mother', sex: 'F', father_id: 'mf', mother_id: 'mm' },
+      { id: 'ff', name: 'Paternal grandfather', sex: 'M' },
+      { id: 'fm', name: 'Paternal grandmother', sex: 'F' },
+      { id: 'au', name: 'Paternal aunt', father_id: 'ff', mother_id: 'fm' },
+      { id: 'mf', name: 'Maternal grandfather', sex: 'M' },
+      { id: 'mm', name: 'Maternal grandmother', sex: 'F' },
+      { id: 'un', name: 'Maternal uncle', father_id: 'mf', mother_id: 'mm' }
+    ]
+  });
+  const ids = (mode, side) => layout(model, 'f', mode, side).cards.map(c => c.id).sort();
+  assert.deepEqual(ids('full', 'father'), ['au', 'f', 'fa', 'ff', 'fm', 'hp', 's']);
+  assert.deepEqual(ids('full', 'mother'), ['f', 'hm', 'mf', 'mm', 'mo', 's', 'un']);
+  assert.deepEqual(ids('ancestors', 'father'), ['f', 'fa', 'ff', 'fm']);
+  assert.deepEqual(ids('ancestors', 'mother'), ['f', 'mf', 'mm', 'mo']);
+  assert.equal(ids('full', null).length, 12, 'no side shows everyone');
+  // the father's line reaches the focus person's row straight down from his card
+  const { cards, segs } = layout(model, 'f', 'full', 'father');
+  const fa = cards.find(c => c.id === 'fa');
+  assert.ok(segs.some(([x1, y1, x2]) => x1 === fa.x + CARD_W / 2 && x2 === x1 && y1 === fa.y + CARD_H));
+});

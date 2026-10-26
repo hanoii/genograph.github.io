@@ -6,6 +6,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Filter any view to the focus person's father's or mother's side of the family.
+
 ## [1.2.3] - 2026-08-23
 
 ### Added
