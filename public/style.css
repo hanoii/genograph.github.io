@@ -503,9 +503,10 @@ dialog { background: var(--surface); color: var(--text); }
 .pr-choice, .pr-sub { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
 .pr-opt input { margin: 2px 0 0; accent-color: var(--primary); cursor: pointer; }
 .pr-opt .hint { display: block; margin-top: 2px; }
-/* a layout's own options sit under its description, dimmed while another layout is chosen */
+/* a layout's own options sit under its description, disabled while another layout is chosen */
 .pr-sub { font-size: 13.5px; margin: 8px 0 0 23px; }
-.pr-opt:not(:has(input[type="radio"]:checked)) .pr-sub { opacity: .6; }
+.pr-sub:has(input:disabled) { opacity: .5; cursor: default; }
+.pr-sub input:disabled { cursor: default; }
 .pr-label { font-size: 14px; font-weight: 500; }
 .pr-view {
   font-size: 13px; color: var(--primary-dark); background: var(--primary-tint); border-radius: 8px;

@@ -1379,6 +1379,10 @@ function renderPrintView() {
     ahnentafel: mode === 'ancestors'
   });
 }
+// notes belong to the detailed layout, so they can only be chosen with it
+function syncNotes() {
+  $('prNotes').disabled = !$('prDetailed').checked;
+}
 function openPrintDialog() {
   const dlg = $('printDialog');
   if (!canPrint() || dlg.open) return;
@@ -1398,6 +1402,7 @@ function openPrintDialog() {
   $('prOk').textContent = t('printBtn');
   $(printOpts.compact ? 'prCompact' : 'prDetailed').checked = true;
   $('prNotes').checked = printOpts.notes;
+  syncNotes();
   $('prLiving').checked = printOpts.hideLiving;
   dlg.showModal();
   $('prOk').focus();
@@ -1415,8 +1420,7 @@ function setupPrint() {
   $('prCancel').onclick = () => $('printDialog').close();
   $('prOk').onclick = printNow;
   // the compact table has no room for notes
-  // notes belong to the detailed layout, so choosing them picks it
-  $('prNotes').onchange = () => { $('prDetailed').checked = true; };
+  $('prDetailed').onchange = $('prCompact').onchange = syncNotes;
   // Ctrl/Cmd+P opens the print options instead of printing the canvas
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p' && canPrint()) {
