@@ -226,22 +226,24 @@ test('layout: rails under the same row share one depth, below the row\'s tallest
   assert.deepEqual(rails(tall), [110 + 12, 110 + 12], 'the rail to the shorter card drops to the shared depth');
 });
 
+// dad's cousins fill the row between dad and mom, so the rail joining them runs over the
+// cousins' family: its midpoint sits over their children and their line crosses it
+const cousinsBetween = () => buildModel({ people: [
+  { id: 'me', name: 'Me', sex: 'F', father_id: 'dad', mother_id: 'mom', birth: '2010' },
+  { id: 'bro', name: 'Bro', sex: 'M', father_id: 'dad', mother_id: 'mom', birth: '2008' },
+  { id: 'dad', name: 'Dad', sex: 'M', mother_id: 'gm', spouse_ids: ['mom'], birth: '1980' },
+  { id: 'mom', name: 'Mom', sex: 'F', spouse_ids: ['dad'] },
+  { id: 'gm', name: 'Grandma', sex: 'F', mother_id: 'ggm', birth: '1950' },
+  { id: 'aunt', name: 'Great-aunt', sex: 'F', mother_id: 'ggm', birth: '1955' },
+  { id: 'ggm', name: 'Great-grandma', sex: 'F' },
+  { id: 'cousin', name: 'Cousin', sex: 'F', mother_id: 'aunt', spouse_ids: ['cs'], birth: '1982' },
+  { id: 'cs', name: 'Cousin spouse', sex: 'M', spouse_ids: ['cousin'] },
+  { id: 'k1', name: 'K1', sex: 'M', mother_id: 'cousin', father_id: 'cs', birth: '2005' },
+  { id: 'k2', name: 'K2', sex: 'M', mother_id: 'cousin', father_id: 'cs', birth: '2006' }
+]});
+
 test('layout: children hang from the part of a rail above them, not over their cousins', () => {
-  // dad's cousins fill the row between dad and mom, so the rail's midpoint sits over their children
-  const people = [
-    { id: 'me', name: 'Me', sex: 'F', father_id: 'dad', mother_id: 'mom', birth: '2010' },
-    { id: 'bro', name: 'Bro', sex: 'M', father_id: 'dad', mother_id: 'mom', birth: '2008' },
-    { id: 'dad', name: 'Dad', sex: 'M', mother_id: 'gm', spouse_ids: ['mom'], birth: '1980' },
-    { id: 'mom', name: 'Mom', sex: 'F', spouse_ids: ['dad'] },
-    { id: 'gm', name: 'Grandma', sex: 'F', mother_id: 'ggm', birth: '1950' },
-    { id: 'aunt', name: 'Great-aunt', sex: 'F', mother_id: 'ggm', birth: '1955' },
-    { id: 'ggm', name: 'Great-grandma', sex: 'F' },
-    { id: 'cousin', name: 'Cousin', sex: 'F', mother_id: 'aunt', spouse_ids: ['cs'], birth: '1982' },
-    { id: 'cs', name: 'Cousin spouse', sex: 'M', spouse_ids: ['cousin'] },
-    { id: 'k1', name: 'K1', sex: 'M', mother_id: 'cousin', father_id: 'cs', birth: '2005' },
-    { id: 'k2', name: 'K2', sex: 'M', mother_id: 'cousin', father_id: 'cs', birth: '2006' }
-  ];
-  const { cards, segs } = layout(buildModel({ people }), 'me', 'full');
+  const { cards, segs } = layout(cousinsBetween(), 'me', 'full');
   const cx = id => cards.find(c => c.id === id).x + CARD_W / 2;
   const bus = -26;
   const buses = segs.filter(([, y1, , y2]) => y1 === bus && y2 === bus);
@@ -249,4 +251,19 @@ test('layout: children hang from the part of a rail above them, not over their c
   assert.ok(own[0] > Math.max(cx('k1'), cx('k2')), 'the siblings\' bus stays clear of the cousins');
   const drops = segs.filter(([x1, y1, x2, y2]) => x1 === x2 && y2 === bus && y1 < bus);
   assert.equal(new Set(drops.map(sg => sg[0])).size, drops.length, 'each family drops at its own x');
+});
+
+test('layout: a line crossing another without joining it is broken around the crossing', () => {
+  const { cards, segs } = layout(cousinsBetween(), 'me', 'full');
+  const cx = id => cards.find(c => c.id === id).x + CARD_W / 2;
+  const flat = segs.filter(([x1, y1, x2, y2]) => y1 === y2 && x1 !== x2);
+  const upright = segs.filter(([x1, y1, x2, y2]) => x1 === x2 && y1 !== y2);
+  const through = ([x, y1, , y2], [a, y, b]) =>
+    Math.min(a, b) < x && x < Math.max(a, b) && Math.min(y1, y2) < y && y < Math.max(y1, y2);
+  assert.ok(!upright.some(v => flat.some(h => through(v, h))), 'no line runs through another');
+  // the cousins' drop to their children has a gap where it passes the rail joining dad and mom
+  const rail = flat.find(([a, , b]) => Math.min(a, b) === cx('dad') && Math.max(a, b) === cx('mom'))[1];
+  const drop = upright.filter(([x]) => x === (cx('k1') + cx('k2')) / 2);
+  assert.ok(drop.some(([, y1, , y2]) => Math.max(y1, y2) < rail), 'the drop reaches toward the rail from above');
+  assert.ok(drop.some(([, y1, , y2]) => Math.min(y1, y2) > rail), 'and continues below it');
 });
