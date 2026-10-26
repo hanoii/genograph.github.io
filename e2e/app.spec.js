@@ -216,6 +216,7 @@ test('printing follows the selected view and focus person', async ({ page }) => 
   await page.locator('#segFull').click();
   await page.keyboard.press('ControlOrMeta+p');
   await expect(page.locator('#printDialog')).toBeVisible();
+  await expect(page.locator('#prDetailed')).toBeChecked();
   await page.locator('#prNotes').uncheck();
   await page.locator('#prOk').click();
   const whole = await page.evaluate(() => window.__printed);
@@ -226,7 +227,7 @@ test('printing follows the selected view and focus person', async ({ page }) => 
 
   await page.locator('#printBtn').click();
   await page.locator('#prCompact').check();
-  await expect(page.locator('#prNotes')).toBeDisabled();
+  await expect(page.locator('#prNotes')).toBeHidden();
   await page.locator('#prOk').click();
   const compact = await page.evaluate(() => window.__printed);
   expect(compact).toContain('<table class="rp-table">');

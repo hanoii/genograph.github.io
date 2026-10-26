@@ -196,7 +196,6 @@ html[lang="tr"] #zoomFit { font-size: 10px; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .checkrow { display: flex; align-items: center; gap: 8px; margin: 2px 0 14px; font-size: 14px; cursor: pointer; }
 .checkrow input { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
-.checkrow:has(input:disabled) { opacity: .5; cursor: default; }
 
 .relsec { margin: 14px 0 4px; }
 .relsec h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 12px 0 6px; }
@@ -497,6 +496,16 @@ dialog { background: var(--surface); color: var(--text); }
 .welcome-actions .btn { padding: 10px 26px; }
 
 /* ===== Print dialog ===== */
+.pr-opts { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
+.pr-group { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.pr-opt {
+  display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--outline); border-radius: 12px;
+  padding: 10px 12px; cursor: pointer;
+}
+.pr-opt:has(input:checked) { border-color: var(--primary); background: var(--primary-tint); }
+.pr-opt input { margin: 2px 0 0; accent-color: var(--primary); cursor: pointer; }
+.pr-opt .hint { display: block; margin-top: 2px; }
+.pr-label { font-size: 14px; font-weight: 500; }
 .pr-view {
   font-size: 13px; color: var(--primary-dark); background: var(--primary-tint); border-radius: 8px;
   padding: 8px 12px; margin: 8px 0 16px; line-height: 1.45;

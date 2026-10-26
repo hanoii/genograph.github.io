@@ -123,7 +123,9 @@ const I18N = {
     reportGenUp3: 'Büyük büyükanne-büyükbaba kuşağı', reportGenUpN: '{d} kuşak yukarı',
     reportGenDown1: 'Çocuklar kuşağı', reportGenDown2: 'Torunlar kuşağı', reportGenDown3: 'Torun çocukları kuşağı',
     reportGenDownN: '{d} kuşak aşağı',
-    printCompact: 'Kompakt: kişi başına bir satır', reportParents: 'Anne-baba', reportLivingShort: 'Yaşıyor', reportMonths: '{m} ay',
+    printLayout: 'Düzen', printDetailed: 'Ayrıntılı', printDetailedHint: 'Kişi başına tam kayıt: bilgiler, akrabalar ve notlar',
+    printCompact: 'Kompakt', printCompactHint: 'Kişi başına bir tablo satırı; bir görünüm bir iki sayfaya sığar',
+    reportParents: 'Anne-baba', reportLivingShort: 'Yaşıyor', reportMonths: '{m} ay',
     reportAhnentafel: 'Ahnentafel numaraları: bir kişinin babası numarasının iki katı, annesi iki katının bir fazlasıdır.'
   },
   en: {
@@ -222,7 +224,9 @@ const I18N = {
     reportGenUp3: 'Great-grandparents\' generation', reportGenUpN: '{k}× great-grandparents\' generation',
     reportGenDown1: 'Children\'s generation', reportGenDown2: 'Grandchildren\'s generation', reportGenDown3: 'Great-grandchildren\'s generation',
     reportGenDownN: '{k}× great-grandchildren\'s generation',
-    printCompact: 'Compact: one line per person', reportParents: 'Parents', reportLivingShort: 'Living', reportMonths: '{m} months',
+    printLayout: 'Layout', printDetailed: 'Detailed', printDetailedHint: 'A full entry per person: details, relatives and notes',
+    printCompact: 'Compact', printCompactHint: 'One table line per person, so a view fits on a page or two',
+    reportParents: 'Parents', reportLivingShort: 'Living', reportMonths: '{m} months',
     reportAhnentafel: 'Ahnentafel numbers: anyone\'s father is twice their number, their mother twice plus one.'
   }
 };
@@ -1375,6 +1379,10 @@ function renderPrintView() {
     ahnentafel: mode === 'ancestors'
   });
 }
+// notes only fit the detailed layout
+function syncNotesRow() {
+  $('prNotesRow').classList.toggle('hidden', $('prCompact').checked);
+}
 function openPrintDialog() {
   const dlg = $('printDialog');
   if (!canPrint() || dlg.open) return;
@@ -1382,15 +1390,19 @@ function openPrintDialog() {
   $('prViewHint').textContent = t('printViewHint', {
     v: t(MODE_LABEL[mode]), n: model.byId.get(focusId)?.name || '?', c: placedIds.size
   });
+  $('lbPrLayout').textContent = t('printLayout');
+  $('lbPrDetailed').textContent = t('printDetailed');
+  $('prDetailedHint').textContent = t('printDetailedHint');
   $('lbPrCompact').textContent = t('printCompact');
+  $('prCompactHint').textContent = t('printCompactHint');
   $('lbPrNotes').textContent = t('printNotes');
   $('lbPrLiving').textContent = t('printHideLiving');
   $('prPdfHint').textContent = t('printPdfHint');
   $('prCancel').textContent = t('cancel');
   $('prOk').textContent = t('printBtn');
-  $('prCompact').checked = printOpts.compact;
+  $(printOpts.compact ? 'prCompact' : 'prDetailed').checked = true;
   $('prNotes').checked = printOpts.notes;
-  $('prNotes').disabled = printOpts.compact;
+  syncNotesRow();
   $('prLiving').checked = printOpts.hideLiving;
   dlg.showModal();
   $('prOk').focus();
@@ -1408,7 +1420,7 @@ function setupPrint() {
   $('prCancel').onclick = () => $('printDialog').close();
   $('prOk').onclick = printNow;
   // the compact table has no room for notes
-  $('prCompact').onchange = () => { $('prNotes').disabled = $('prCompact').checked; };
+  $('prDetailed').onchange = $('prCompact').onchange = syncNotesRow;
   // Ctrl/Cmd+P opens the print options instead of printing the canvas
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p' && canPrint()) {
