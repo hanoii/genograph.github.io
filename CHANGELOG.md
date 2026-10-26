@@ -47,6 +47,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   of their row, all at the same depth. Cards grow when a name or place wraps,
   and the line used to sit at a fixed depth that a taller card could reach and
   hide.
+- Drop the line to a couple's children from the part of their joining line
+  above those children. Its midpoint could land over cousins drawn between the
+  couple, so both families' children looked like one set of siblings.
 
 ## [1.2.3] - 2026-08-23
 

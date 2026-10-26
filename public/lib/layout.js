@@ -81,7 +81,8 @@ export function layout(model, focusId, mode, heights = null) {
     return s;
   };
 
-  // marriage connector between two cards (center, person id) on the same row; returns drop point
+  // marriage connector between two cards (center, person id) on the same row; returns drop
+  // point, plus the rail's span (lo..hi) when the children's line may leave from anywhere on it
   function marriage(cx1, cx2, gen, id1, id2) {
     const top = -gen * PITCH, mid = top + CARD_H / 2;
     const [l, r] = cx1 <= cx2 ? [cx1, cx2] : [cx2, cx1];
@@ -93,13 +94,18 @@ export function layout(model, focusId, mode, heights = null) {
     const [lb, rb] = (cx1 <= cx2 ? [id1, id2] : [id2, id1]).map(id => top + hOf(id));
     const rail = railAt(gen);
     seg(l, lb, l, rail); seg(r, rb, r, rail); seg(l, rail, r, rail);
-    return { x: (l + r) / 2, y: rail };
+    return { x: (l + r) / 2, y: rail, lo: l, hi: r };
   }
   function dropToChildren(drop, childCenters, childGen) {
     if (!childCenters.length) return;
     const cTop = -childGen * PITCH, bus = cTop - 26;
-    seg(drop.x, drop.y, drop.x, bus);
-    const lo = Math.min(drop.x, ...childCenters), hi = Math.max(drop.x, ...childCenters);
+    const cLo = Math.min(...childCenters), cHi = Math.max(...childCenters);
+    // a rail's midpoint can land over other children (cousins packed under a wide couple);
+    // drop from the rail above these children instead, so the families' lines stay apart
+    let x = drop.x;
+    if (drop.lo != null && (x < cLo || x > cHi)) x = Math.max(drop.lo, Math.min(drop.hi, (cLo + cHi) / 2));
+    seg(x, drop.y, x, bus);
+    const lo = Math.min(x, cLo), hi = Math.max(x, cHi);
     if (hi > lo) seg(lo, bus, hi, bus);
     for (const c of childCenters) seg(c, bus, c, cTop);
   }

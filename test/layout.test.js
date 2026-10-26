@@ -100,7 +100,8 @@ test('layout — children from different spouses use distinct union drops', () =
     const card = cards.find(candidate => candidate.id === id);
     return card.x + CARD_W / 2;
   };
-  const expectedUnionDrops = [(center('p') + center('s1')) / 2, (center('p') + center('s2')) / 2];
+  // the far spouse's rail midpoint sits under s1, so that union drops from the rail above its child
+  const expectedUnionDrops = [(center('p') + center('s1')) / 2, center('c2')];
   for (const drop of expectedUnionDrops) {
     assert.ok(segs.some(([x1, , x2, y2]) => x1 === drop && x2 === drop && y2 === PITCH - 26),
       `union at ${drop} has its own child drop`);
@@ -282,4 +283,29 @@ test('layout: rails under the same row share one depth, below the row\'s tallest
   assert.deepEqual(rails(plain), [CARD_H + 12, CARD_H + 12]);
   const tall = layout(buildModel({ people: structuredClone(people) }), 'me', 'full', new Map([['third', 110]]));
   assert.deepEqual(rails(tall), [110 + 12, 110 + 12], 'the rail to the shorter card drops to the shared depth');
+});
+
+test('layout: children hang from the part of a rail above them, not over their cousins', () => {
+  // dad's cousins fill the row between dad and mom, so the rail's midpoint sits over their children
+  const people = [
+    { id: 'me', name: 'Me', sex: 'F', father_id: 'dad', mother_id: 'mom', birth: '2010' },
+    { id: 'bro', name: 'Bro', sex: 'M', father_id: 'dad', mother_id: 'mom', birth: '2008' },
+    { id: 'dad', name: 'Dad', sex: 'M', mother_id: 'gm', spouse_ids: ['mom'], birth: '1980' },
+    { id: 'mom', name: 'Mom', sex: 'F', spouse_ids: ['dad'] },
+    { id: 'gm', name: 'Grandma', sex: 'F', mother_id: 'ggm', birth: '1950' },
+    { id: 'aunt', name: 'Great-aunt', sex: 'F', mother_id: 'ggm', birth: '1955' },
+    { id: 'ggm', name: 'Great-grandma', sex: 'F' },
+    { id: 'cousin', name: 'Cousin', sex: 'F', mother_id: 'aunt', spouse_ids: ['cs'], birth: '1982' },
+    { id: 'cs', name: 'Cousin spouse', sex: 'M', spouse_ids: ['cousin'] },
+    { id: 'k1', name: 'K1', sex: 'M', mother_id: 'cousin', father_id: 'cs', birth: '2005' },
+    { id: 'k2', name: 'K2', sex: 'M', mother_id: 'cousin', father_id: 'cs', birth: '2006' }
+  ];
+  const { cards, segs } = layout(buildModel({ people }), 'me', 'full');
+  const cx = id => cards.find(c => c.id === id).x + CARD_W / 2;
+  const bus = -26;
+  const buses = segs.filter(([, y1, , y2]) => y1 === bus && y2 === bus);
+  const own = buses.find(([x1, , x2]) => x1 <= cx('me') && cx('me') <= x2);
+  assert.ok(own[0] > Math.max(cx('k1'), cx('k2')), 'the siblings\' bus stays clear of the cousins');
+  const drops = segs.filter(([x1, y1, x2, y2]) => x1 === x2 && y2 === bus && y1 < bus);
+  assert.equal(new Set(drops.map(sg => sg[0])).size, drops.length, 'each family drops at its own x');
 });
