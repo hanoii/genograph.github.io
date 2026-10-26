@@ -122,7 +122,9 @@ const I18N = {
     reportGen0: '{n} kuşağı', reportGenUp1: 'Anne-baba kuşağı', reportGenUp2: 'Büyükanne-büyükbaba kuşağı',
     reportGenUp3: 'Büyük büyükanne-büyükbaba kuşağı', reportGenUpN: '{d} kuşak yukarı',
     reportGenDown1: 'Çocuklar kuşağı', reportGenDown2: 'Torunlar kuşağı', reportGenDown3: 'Torun çocukları kuşağı',
-    reportGenDownN: '{d} kuşak aşağı'
+    reportGenDownN: '{d} kuşak aşağı',
+    printCompact: 'Kompakt: kişi başına bir satır', reportParents: 'Anne-baba', reportLivingShort: 'Yaşıyor',
+    reportAhnentafel: 'Ahnentafel numaraları: bir kişinin babası numarasının iki katı, annesi iki katının bir fazlasıdır.'
   },
   en: {
     title: 'Family Tree', modeFull: 'Whole Family', modeClose: 'Close Family', modeAnc: 'Ancestors',
@@ -219,7 +221,9 @@ const I18N = {
     reportGen0: 'Generation of {n}', reportGenUp1: 'Parents\' generation', reportGenUp2: 'Grandparents\' generation',
     reportGenUp3: 'Great-grandparents\' generation', reportGenUpN: '{k}× great-grandparents\' generation',
     reportGenDown1: 'Children\'s generation', reportGenDown2: 'Grandchildren\'s generation', reportGenDown3: 'Great-grandchildren\'s generation',
-    reportGenDownN: '{k}× great-grandchildren\'s generation'
+    reportGenDownN: '{k}× great-grandchildren\'s generation',
+    printCompact: 'Compact: one line per person', reportParents: 'Parents', reportLivingShort: 'Living',
+    reportAhnentafel: 'Ahnentafel numbers: anyone\'s father is twice their number, their mother twice plus one.'
   }
 };
 const storedLang = localStorage.getItem('ft_lang');
@@ -1360,14 +1364,15 @@ function setupTreeLibrary() {
 /* ---------------- print ----------------
  * The current view is rendered into #printView, which only print media shows,
  * and the browser's own print dialog handles paper and "Save as PDF". */
-const printOpts = { notes: true, hideLiving: false };
+const printOpts = { notes: true, hideLiving: false, compact: false };
 const MODE_LABEL = { full: 'modeFull', close: 'modeClose', ancestors: 'modeAnc' };
 
 const canPrint = () => !!(model && lastLayout?.cards.length);
 function renderPrintView() {
   $('printView').innerHTML = viewReport(model, lastLayout.cards, focusId, {
     t, lang, title: currentTreeName(), note: model.raw.summary?.note, view: t(MODE_LABEL[mode]),
-    notes: printOpts.notes, hideLiving: printOpts.hideLiving
+    notes: printOpts.notes, hideLiving: printOpts.hideLiving, compact: printOpts.compact,
+    ahnentafel: mode === 'ancestors'
   });
 }
 function openPrintDialog() {
@@ -1377,17 +1382,21 @@ function openPrintDialog() {
   $('prViewHint').textContent = t('printViewHint', {
     v: t(MODE_LABEL[mode]), n: model.byId.get(focusId)?.name || '?', c: placedIds.size
   });
+  $('lbPrCompact').textContent = t('printCompact');
   $('lbPrNotes').textContent = t('printNotes');
   $('lbPrLiving').textContent = t('printHideLiving');
   $('prPdfHint').textContent = t('printPdfHint');
   $('prCancel').textContent = t('cancel');
   $('prOk').textContent = t('printBtn');
+  $('prCompact').checked = printOpts.compact;
   $('prNotes').checked = printOpts.notes;
+  $('prNotes').disabled = printOpts.compact;
   $('prLiving').checked = printOpts.hideLiving;
   dlg.showModal();
   $('prOk').focus();
 }
 function printNow() {
+  printOpts.compact = $('prCompact').checked;
   printOpts.notes = $('prNotes').checked;
   printOpts.hideLiving = $('prLiving').checked;
   $('printDialog').close();
@@ -1398,6 +1407,8 @@ function setupPrint() {
   $('printBtn').onclick = openPrintDialog;
   $('prCancel').onclick = () => $('printDialog').close();
   $('prOk').onclick = printNow;
+  // the compact table has no room for notes
+  $('prCompact').onchange = () => { $('prNotes').disabled = $('prCompact').checked; };
   // Ctrl/Cmd+P opens the print options instead of printing the canvas
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p' && canPrint()) {

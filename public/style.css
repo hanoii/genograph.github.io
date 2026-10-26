@@ -196,6 +196,7 @@ html[lang="tr"] #zoomFit { font-size: 10px; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .checkrow { display: flex; align-items: center; gap: 8px; margin: 2px 0 14px; font-size: 14px; cursor: pointer; }
 .checkrow input { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
+.checkrow:has(input:disabled) { opacity: .5; cursor: default; }
 
 .relsec { margin: 14px 0 4px; }
 .relsec h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 12px 0 6px; }
@@ -532,4 +533,10 @@ dialog { background: var(--surface); color: var(--text); }
 .rp-facts dt { color: #555; }
 .rp-facts dd { margin: 0; }
 .rp-notes { margin-top: 3pt; font-size: 9.5pt; }
+.rp-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-top: 4pt; }
+.rp-table th, .rp-table td { border: .5pt solid #999; padding: 2pt 5pt; text-align: left; vertical-align: top; }
+.rp-table th { background: #eee; }
+.rp-table tr { break-inside: avoid; }
+.rp-table tr.rp-focus td { font-weight: bold; }
+.rp-n { width: 2.4em; text-align: right !important; }
 .rp-notes p { margin: 0 0 3pt; }

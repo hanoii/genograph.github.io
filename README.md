@@ -110,8 +110,10 @@ The app opens with an example tree (the immediate relatives of **Guy de Lusignan
   (or `Ctrl`/`Cmd`+`P`). The printout follows the selected view and focus person:
   one section per generation (parents, grandparents, children, ...) in the order
   the cards are drawn, with each person's details, relatives cross-referenced by
-  number, and notes. You can leave out notes and withhold the details of living
-  people before sharing a printout.
+  number, and notes. *Compact* prints one table line per person instead, handy to
+  check with a relative. The Ancestors view is numbered the Ahnentafel way: you are
+  1, anyone's father is twice their number and their mother twice plus one. You can
+  leave out notes and withhold the details of living people before sharing a printout.
 - **Views:** *Whole Family*, *Close Family*, *Ancestors* (segmented control, top).
   Whole Family shows every descendant; Close Family shows the ancestors, their
   siblings, and the focused person's spouse and children; Ancestors shows only
