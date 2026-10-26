@@ -108,8 +108,9 @@ export function layout(model, focusId, mode) {
     place(x, gen) { addCard(pid, x, gen); return x + CARD_W / 2; }
   });
 
-  // descendant block: person (+spouses, +children recursively in full mode)
-  function descNode(pid, depth, trail = new Set()) {
+  // descendant block: person (+spouses, +children recursively in full mode);
+  // spouses sit to the person's right, or to their left with `spousesLeft`
+  function descNode(pid, depth, trail = new Set(), spousesLeft = false) {
     spend();
     const p = by(pid);
     // close mode still shows the focus person's own household, one generation down
@@ -138,19 +139,21 @@ export function layout(model, focusId, mode) {
     const coupleX = kidCenters.length
       ? (Math.min(...kidCenters) + Math.max(...kidCenters)) / 2 - coupleW / 2 : 0;
     mergeCont(cont, new Map([[0, [coupleX, coupleX + coupleW]]]), 0, 0);
+    const selfX = spousesLeft ? coupleX + coupleW - CARD_W : coupleX;
+    const step = (spousesLeft ? -1 : 1) * (CARD_W + GAP);
     return {
       cont,
-      cx: coupleX + CARD_W / 2,
+      cx: selfX + CARD_W / 2,
       place(x, gen) {
-        addCard(pid, x + coupleX, gen);
-        const pc = x + coupleX + CARD_W / 2;
-        let sx = x + coupleX + CARD_W + GAP;
+        addCard(pid, x + selfX, gen);
+        const pc = x + selfX + CARD_W / 2;
+        let sx = x + selfX + step;
         const drops = new Map();
         for (const s of spouses) {
           addCard(s, sx, gen);
           const sc = sx + CARD_W / 2;
           drops.set(s, marriage(pc, sc, gen));
-          sx += CARD_W + GAP;
+          sx += step;
         }
         if (kidB.length) {
           const cc = kidB.map((b, i) => b.place(x + kidDx[i], gen - 1));
@@ -208,61 +211,90 @@ export function layout(model, focusId, mode) {
       }
     }
     rowIds.forEach(id => claimed.add(id));
-    const rowB = rowIds.map(id => id === pid
-      ? (pid === focusId ? descNode(pid, 0) : cardBlock(pid))
-      : descNode(id, 1));
-
-    // pack the sibling row left-to-right
-    const rowCont = new Map();
-    const rowDx = [];
-    for (const b of rowB) {
-      const c = rowDx.length ? clearance(rowCont, 0, b.cont, 0) : null;
-      const dx = c == null ? 0 : -c;
-      rowDx.push(dx);
-      mergeCont(rowCont, b.cont, dx, 0);
-    }
-    const rowCenters = rowB.map((b, i) => rowDx[i] + b.cx);
-    const rowMidBase = (Math.min(...rowCenters) + Math.max(...rowCenters)) / 2;
+    // the focus person's household is built with spouses on the right; ids it claims are
+    // remembered so it can be rebuilt with them on the left (see below)
+    let selfClaims = [];
+    const selfBlock = spousesLeft => {
+      if (pid !== focusId) return cardBlock(pid);
+      for (const id of selfClaims) claimed.delete(id);
+      const before = new Set(claimed);
+      const b = descNode(pid, 0, new Set(), spousesLeft);
+      selfClaims = [...claimed].filter(id => !before.has(id));
+      return b;
+    };
+    const rowB = rowIds.map(id => id === pid ? selfBlock(false) : descNode(id, 1));
+    const selfIdx = rowIds.indexOf(pid);
 
     const faCont = faB ? trans(faB.cont, 1) : null;
     const moCont = moB ? trans(moB.cont, 1) : null;
+    const arrange = () => {
+      // pack the sibling row left-to-right
+      const rowCont = new Map();
+      const rowDx = [];
+      for (const b of rowB) {
+        const c = rowDx.length ? clearance(rowCont, 0, b.cont, 0) : null;
+        const dx = c == null ? 0 : -c;
+        rowDx.push(dx);
+        mergeCont(rowCont, b.cont, dx, 0);
+      }
+      const rowCenters = rowB.map((b, i) => rowDx[i] + b.cx);
+      const rowMidBase = (Math.min(...rowCenters) + Math.max(...rowCenters)) / 2;
 
-    // row starts tight against the father-side block (if their contours share generations)
-    let r = 0;
-    if (faCont) { const c = clearance(faCont, 0, rowCont, 0); if (c != null) r = -c; }
-    // mother block packs tight against father block and the row
-    let dxMo = 0;
-    if (moCont) {
-      const cs = [faCont ? clearance(faCont, 0, moCont, 0) : null, clearance(rowCont, r, moCont, 0)]
-        .filter(v => v != null);
-      if (cs.length) dxMo = -Math.min(...cs);
-    }
-    // cosmetic pass: center the row under the marriage midpoint within the free slack,
-    // then nudge the parents toward the row if the row could not reach the midpoint
-    const faCx = faB ? faB.cx : null;
-    const moCx = moB ? dxMo + moB.cx : null;
-    const mid = (faCx != null && moCx != null) ? (faCx + moCx) / 2 : (faCx ?? moCx);
-    let q = 0;
-    if (mid != null) {
-      const cL = faCont ? clearance(faCont, 0, rowCont, r) : null;
-      const rMin = cL == null ? -INF : r - cL;
-      const cR = moCont ? clearance(rowCont, r, moCont, dxMo) : null;
-      const rMax = cR == null ? INF : r + cR;
-      r = Math.max(rMin, Math.min(rMax, mid - rowMidBase));
-      const diff = (rowMidBase + r) - mid;
-      if (diff > 0.5) {
-        const c3 = faCont ? clearance(faCont, 0, rowCont, r) : null;
-        q = Math.min(diff, c3 == null ? INF : c3);
-      } else if (diff < -0.5) {
-        const c4 = moCont ? clearance(rowCont, r, moCont, dxMo) : null;
-        q = -Math.min(-diff, c4 == null ? INF : c4);
+      // row starts tight against the father-side block (if their contours share generations)
+      let r = 0;
+      if (faCont) { const c = clearance(faCont, 0, rowCont, 0); if (c != null) r = -c; }
+      // mother block packs tight against father block and the row
+      let dxMo = 0;
+      if (moCont) {
+        const cs = [faCont ? clearance(faCont, 0, moCont, 0) : null, clearance(rowCont, r, moCont, 0)]
+          .filter(v => v != null);
+        if (cs.length) dxMo = -Math.min(...cs);
+      }
+      // cosmetic pass: center the row under the marriage midpoint within the free slack,
+      // then nudge the parents toward the row if the row could not reach the midpoint
+      const faCx = faB ? faB.cx : null;
+      const moCx = moB ? dxMo + moB.cx : null;
+      const mid = (faCx != null && moCx != null) ? (faCx + moCx) / 2 : (faCx ?? moCx);
+      let q = 0;
+      if (mid != null) {
+        const cL = faCont ? clearance(faCont, 0, rowCont, r) : null;
+        const rMin = cL == null ? -INF : r - cL;
+        const cR = moCont ? clearance(rowCont, r, moCont, dxMo) : null;
+        const rMax = cR == null ? INF : r + cR;
+        r = Math.max(rMin, Math.min(rMax, mid - rowMidBase));
+        const diff = (rowMidBase + r) - mid;
+        if (diff > 0.5) {
+          const c3 = faCont ? clearance(faCont, 0, rowCont, r) : null;
+          q = Math.min(diff, c3 == null ? INF : c3);
+        } else if (diff < -0.5) {
+          const c4 = moCont ? clearance(rowCont, r, moCont, dxMo) : null;
+          q = -Math.min(-diff, c4 == null ? INF : c4);
+        }
+      }
+      const cont = new Map();
+      if (faCont) mergeCont(cont, faCont, q, 0);
+      mergeCont(cont, rowCont, r, 0);
+      if (moCont) mergeCont(cont, moCont, dxMo + q, 0);
+      // how far the row's middle ends up from the parents' marriage midpoint
+      const jog = mid == null ? 0 : Math.abs((rowMidBase + r) - (mid + q));
+      return { rowDx, r, q, dxMo, cont, jog };
+    };
+    let arr = arrange();
+    // when the household could not sit under the parents (say, cousins fill the row on
+    // the spouse's side), try the spouses on the other side and keep the straighter line
+    if (pid === focusId && arr.jog > 0.5 && selfClaims.some(id => by(pid)._spouses.includes(id))) {
+      const right = rowB[selfIdx], rightClaims = selfClaims;
+      rowB[selfIdx] = selfBlock(true);
+      const left = arrange();
+      if (left.jog < arr.jog - 0.5) arr = left;
+      else {
+        for (const id of selfClaims) claimed.delete(id);
+        for (const id of rightClaims) claimed.add(id);
+        selfClaims = rightClaims;
+        rowB[selfIdx] = right;
       }
     }
-    const cont = new Map();
-    if (faCont) mergeCont(cont, faCont, q, 0);
-    mergeCont(cont, rowCont, r, 0);
-    if (moCont) mergeCont(cont, moCont, dxMo + q, 0);
-    const selfIdx = rowIds.indexOf(pid);
+    const { rowDx, r, q, dxMo, cont } = arr;
     return {
       cont,
       cx: r + rowDx[selfIdx] + rowB[selfIdx].cx,

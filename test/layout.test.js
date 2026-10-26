@@ -210,3 +210,34 @@ test('layout — close mode shows the focus person\'s spouse and children, not g
   assert.deepEqual(ids, ['brother', 'dad', 'kid', 'me', 'wife']);
   assert.ok(layout(model, 'me', 'full').cards.some(card => card.id === 'grandkid'), 'full mode still has every descendant');
 });
+
+test('layout: the focus person sits straight under their parents, their spouse on the side with room', () => {
+  // the mother's sister has children on the focus person's row, right where a spouse
+  // placed on the right would go
+  const people = [
+    { id: 'gf', name: 'Grandfather', sex: 'M', spouse_ids: ['gm'], children_ids: ['mo', 'aunt'] },
+    { id: 'gm', name: 'Grandmother', sex: 'F', spouse_ids: ['gf'], children_ids: ['mo', 'aunt'] },
+    { id: 'fa', name: 'Father', sex: 'M', spouse_ids: ['mo'], children_ids: ['me'] },
+    { id: 'mo', name: 'Mother', sex: 'F', birth_date: '1940', father_id: 'gf', mother_id: 'gm', spouse_ids: ['fa'], children_ids: ['me'] },
+    { id: 'aunt', name: 'Aunt', sex: 'F', birth_date: '1945', father_id: 'gf', mother_id: 'gm', children_ids: ['c1', 'c2'] },
+    { id: 'c1', name: 'Cousin One', mother_id: 'aunt' },
+    { id: 'c2', name: 'Cousin Two', mother_id: 'aunt' },
+    { id: 'me', name: 'Me', sex: 'M', father_id: 'fa', mother_id: 'mo', spouse_ids: ['sp'], children_ids: ['kid'] },
+    { id: 'sp', name: 'Spouse', sex: 'F', spouse_ids: ['me'], children_ids: ['kid'] },
+    { id: 'kid', name: 'Kid', father_id: 'me', mother_id: 'sp' }
+  ];
+  const center = (cards, id) => cards.find(c => c.id === id).x + CARD_W / 2;
+  const { cards } = layout(buildModel({ people: structuredClone(people) }), 'me', 'full');
+  assert.equal(center(cards, 'me'), (center(cards, 'fa') + center(cards, 'mo')) / 2, 'straight under the parents');
+  assert.ok(center(cards, 'sp') < center(cards, 'me'), 'the spouse moved to the left');
+  for (let i = 0; i < cards.length; i++) {
+    for (let j = i + 1; j < cards.length; j++) assert.ok(!overlaps(cards[i], cards[j]), `${cards[i].id} / ${cards[j].id}`);
+  }
+  assert.equal(new Set(cards.map(c => c.id)).size, cards.length, 'everyone drawn once');
+  assert.ok(cards.some(c => c.id === 'kid'), 'the household keeps its children');
+
+  // with room on the right, the spouse stays on the right as before
+  const alone = layout(buildModel({ people: structuredClone(people).filter(p => !['aunt', 'c1', 'c2'].includes(p.id)) }), 'me', 'full').cards;
+  assert.ok(center(alone, 'sp') > center(alone, 'me'));
+  assert.equal(center(alone, 'me'), (center(alone, 'fa') + center(alone, 'mo')) / 2);
+});
