@@ -14,6 +14,7 @@ import { layout, CARD_W, CARD_H } from './lib/layout.js';
 import { pickStore, openFolder, supportsFolders } from './lib/storage.js';
 import { initialLanguage } from './lib/i18n.js';
 import { SaveCoordinator } from './lib/autosave.js';
+import { viewReport } from './lib/report.js';
 import { assertCanLinkSiblings, assertCanSetParent, linkSiblings, linkSpouses, setParent, unlinkParentChild, unlinkSpouses } from './lib/relationships.js';
 
 /* Browsers ignore frame-ancestors in a <meta> CSP, and the static host cannot
@@ -109,7 +110,19 @@ const I18N = {
     welcomeLocalTitle: 'Gerçek dosyalar ve otomatik yedekler mi istiyorsunuz?',
     welcomeLocal: 'Ücretsiz yerel sürümü çalıştırın: ağaçlarınızı doğrudan bilgisayarınızdaki .json dosyalarına yazar ve otomatik yedek tutar. Tamamen çevrimdışı çalışır.',
     welcomeCopy: 'Kopyala', welcomeCopied: 'Kopyalandı ✓',
-    welcomeStart: 'Keşfetmeye başla'
+    welcomeStart: 'Keşfetmeye başla',
+    // print
+    printView: 'Bu görünümü yazdır / PDF olarak kaydet', printTitle: 'Bu görünümü yazdır',
+    printViewHint: '{n} için {v} görünümü: {c} kişi, kuşak kuşak, ekranda çizildikleri sırayla.',
+    printNotes: 'Notları dahil et', printHideLiving: 'Yaşayan kişilerin ayrıntılarını gizle',
+    printPdfHint: 'PDF dosyası için yazdırma penceresinde "PDF olarak kaydet"i seçin.', printBtn: 'Yazdır',
+    reportPeople: '{n} kişi', reportPrinted: 'Yazdırılma: {d}',
+    reportAbout: 'yakl.', reportBorn: 'Doğum', reportDied: 'Ölüm', reportBuried: 'Defin',
+    reportStatus: 'Durum', reportLiving: 'Yaşıyor; ayrıntılar gizlendi',
+    reportGen0: '{n} kuşağı', reportGenUp1: 'Anne-baba kuşağı', reportGenUp2: 'Büyükanne-büyükbaba kuşağı',
+    reportGenUp3: 'Büyük büyükanne-büyükbaba kuşağı', reportGenUpN: '{d} kuşak yukarı',
+    reportGenDown1: 'Çocuklar kuşağı', reportGenDown2: 'Torunlar kuşağı', reportGenDown3: 'Torun çocukları kuşağı',
+    reportGenDownN: '{d} kuşak aşağı'
   },
   en: {
     title: 'Family Tree', modeFull: 'Whole Family', modeClose: 'Close Family', modeAnc: 'Ancestors',
@@ -194,7 +207,19 @@ const I18N = {
     welcomeLocalTitle: 'Want real files & automatic backups?',
     welcomeLocal: 'Run the free local version: it reads and writes your trees as .json files directly on your computer and keeps automatic backups. Works completely offline.',
     welcomeCopy: 'Copy', welcomeCopied: 'Copied ✓',
-    welcomeStart: 'Start exploring'
+    welcomeStart: 'Start exploring',
+    // print
+    printView: 'Print this view / save as PDF', printTitle: 'Print this view',
+    printViewHint: '{v} of {n}: {c} people, by generation, in the order they are drawn.',
+    printNotes: 'Include notes', printHideLiving: 'Hide details of living people',
+    printPdfHint: 'For a PDF file, choose "Save as PDF" in the print dialog.', printBtn: 'Print',
+    reportPeople: '{n} people', reportPrinted: 'Printed {d}',
+    reportAbout: 'abt.', reportBorn: 'Born', reportDied: 'Died', reportBuried: 'Buried',
+    reportStatus: 'Status', reportLiving: 'Living; details withheld',
+    reportGen0: 'Generation of {n}', reportGenUp1: 'Parents\' generation', reportGenUp2: 'Grandparents\' generation',
+    reportGenUp3: 'Great-grandparents\' generation', reportGenUpN: '{k}× great-grandparents\' generation',
+    reportGenDown1: 'Children\'s generation', reportGenDown2: 'Grandchildren\'s generation', reportGenDown3: 'Great-grandchildren\'s generation',
+    reportGenDownN: '{k}× great-grandchildren\'s generation'
   }
 };
 const storedLang = localStorage.getItem('ft_lang');
@@ -364,6 +389,7 @@ function renderTree() {
     $('canvasError').classList.add('hidden');
     svg.innerHTML = ''; cardsEl.replaceChildren();
     placedIds = new Set();
+    $('printBtn').disabled = true;
     lastLayout = { cards: [], segs: [], bbox: { minX: 0, minY: 0, maxX: 1, maxY: 1 } };
     $('stats').textContent = '';
     $('focusChip').classList.add('hidden');
@@ -378,6 +404,7 @@ function renderTree() {
   } catch (error) {
     svg.innerHTML = ''; cardsEl.replaceChildren();
     placedIds = new Set();
+    $('printBtn').disabled = true;
     lastLayout = { cards: [], segs: [], bbox: { minX: 0, minY: 0, maxX: 1, maxY: 1 } };
     $('stats').textContent = '';
     $('canvasError').textContent = t('layoutTooComplex');
@@ -386,6 +413,7 @@ function renderTree() {
   }
   const { cards, segs, bbox } = output;
   placedIds = new Set(cards.map(c => c.id));
+  $('printBtn').disabled = !placedIds.size;
   lastLayout = { cards, segs, bbox };
 
   const PAD = 60;
@@ -1329,6 +1357,61 @@ function setupTreeLibrary() {
   document.addEventListener('click', e => { if (!e.target.closest('.treewrap')) closeTreeMenu(); });
 }
 
+/* ---------------- print ----------------
+ * The current view is rendered into #printView, which only print media shows,
+ * and the browser's own print dialog handles paper and "Save as PDF". */
+const printOpts = { notes: true, hideLiving: false };
+const MODE_LABEL = { full: 'modeFull', close: 'modeClose', ancestors: 'modeAnc' };
+
+const canPrint = () => !!(model && lastLayout?.cards.length);
+function renderPrintView() {
+  $('printView').innerHTML = viewReport(model, lastLayout.cards, focusId, {
+    t, lang, title: currentTreeName(), note: model.raw.summary?.note, view: t(MODE_LABEL[mode]),
+    notes: printOpts.notes, hideLiving: printOpts.hideLiving
+  });
+}
+function openPrintDialog() {
+  const dlg = $('printDialog');
+  if (!canPrint() || dlg.open) return;
+  $('prTitle').textContent = t('printTitle');
+  $('prViewHint').textContent = t('printViewHint', {
+    v: t(MODE_LABEL[mode]), n: model.byId.get(focusId)?.name || '?', c: placedIds.size
+  });
+  $('lbPrNotes').textContent = t('printNotes');
+  $('lbPrLiving').textContent = t('printHideLiving');
+  $('prPdfHint').textContent = t('printPdfHint');
+  $('prCancel').textContent = t('cancel');
+  $('prOk').textContent = t('printBtn');
+  $('prNotes').checked = printOpts.notes;
+  $('prLiving').checked = printOpts.hideLiving;
+  dlg.showModal();
+  $('prOk').focus();
+}
+function printNow() {
+  printOpts.notes = $('prNotes').checked;
+  printOpts.hideLiving = $('prLiving').checked;
+  $('printDialog').close();
+  renderPrintView();
+  window.print();
+}
+function setupPrint() {
+  $('printBtn').onclick = openPrintDialog;
+  $('prCancel').onclick = () => $('printDialog').close();
+  $('prOk').onclick = printNow;
+  // Ctrl/Cmd+P opens the print options instead of printing the canvas
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p' && canPrint()) {
+      e.preventDefault();
+      openPrintDialog();
+    }
+  });
+  // printing from the browser menu prints the current view with the last options
+  window.addEventListener('beforeprint', () => {
+    if (canPrint() && !$('printView').childElementCount) renderPrintView();
+  });
+  window.addEventListener('afterprint', () => $('printView').replaceChildren());
+}
+
 /* ---------------- data folder ---------------- */
 function updateDataRow() {
   const dir = settings && settings.dataDir;
@@ -1502,6 +1585,8 @@ function applyLabels() {
   $('tmRename').title = t('renameTree');
   $('tmDuplicate').title = t('duplicateTree');
   $('tmExport').title = t('exportTree');
+  $('printBtn').title = t('printView');
+  $('printBtn').setAttribute('aria-label', t('printView'));
   $('tmDelete').title = t('deleteTreeBtn');
   $('tmDataLabel').textContent = t('dataFolder');
   updateStoreRow();
@@ -1553,6 +1638,7 @@ function setupAppbar() {
   setupDataDialog();
   setupStoreRow();
   setupWelcome();
+  setupPrint();
   try {
     const picked = await pickStore();
     store = picked.store; storeMode = picked.mode; savedHandle = picked.savedHandle;

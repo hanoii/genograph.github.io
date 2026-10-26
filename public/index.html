@@ -73,6 +73,9 @@
     <button class="iconbtn" id="homeBtn" title="">
       <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
     </button>
+    <button class="iconbtn" id="printBtn" title="">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 8H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3m-3 11H8v-5h8zm3-7a1 1 0 1 1 0-2 1 1 0 0 1 0 2m-1-9H6v4h12z"/></svg>
+    </button>
     <button class="iconbtn" id="helpBtn" title="">
       <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M11 18h2v-2h-2v2m1-16A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2m0 18a8 8 0 0 1-8-8 8 8 0 0 1 8-8 8 8 0 0 1 8 8 8 8 0 0 1-8 8m0-14a4 4 0 0 0-4 4h2a2 2 0 0 1 2-2 2 2 0 0 1 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5a4 4 0 0 0-4-4z"/></svg>
     </button>
@@ -216,6 +219,19 @@
   <div id="welcomeBody"></div>
 </dialog>
 
+<dialog id="printDialog">
+  <h2 id="prTitle"></h2>
+  <p class="pr-view" id="prViewHint"></p>
+  <label class="checkrow"><input type="checkbox" id="prNotes"> <span id="lbPrNotes"></span></label>
+  <label class="checkrow"><input type="checkbox" id="prLiving"> <span id="lbPrLiving"></span></label>
+  <p class="hint" id="prPdfHint"></p>
+  <div class="actions">
+    <button class="btn text" id="prCancel" type="button"></button>
+    <button class="btn filled" id="prOk" type="button"></button>
+  </div>
+</dialog>
+
+<div id="printView"></div>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 <div id="snackbar" class="hidden" role="status" aria-live="polite"></div>
 <script type="module" src="app.js"></script>

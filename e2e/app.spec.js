@@ -192,3 +192,34 @@ test('core tree controls expose keyboard and state semantics', async ({ page }) 
   await expect(page.locator('#saveStatus')).toHaveAttribute('aria-live', 'polite');
   await expect(page.locator('#searchInput')).toHaveAttribute('role', 'combobox');
 });
+
+test('printing follows the selected view and focus person', async ({ page }) => {
+  await openApp(page, HOSTED);
+  // capture the report instead of opening the browser's print dialog
+  await page.evaluate(() => {
+    window.print = () => { window.__printed = document.getElementById('printView').innerHTML; };
+  });
+  await page.locator('#segAnc').click();
+  await page.locator('#printBtn').click();
+  await expect(page.locator('#printDialog')).toBeVisible();
+  await expect(page.locator('#prViewHint')).toContainText('Ancestors of Guy de Lusignan');
+  await page.locator('#prOk').click();
+  await expect(page.locator('#printDialog')).toBeHidden();
+  const ancestors = await page.evaluate(() => window.__printed);
+  expect(ancestors).toContain('Ancestors: Guy de Lusignan');
+  expect(ancestors).toContain('Parents\' generation');
+  expect(ancestors).toContain('Hugh VIII de Lusignan');
+  expect(ancestors).not.toContain('</span> Sibylla of Jerusalem');
+
+  await page.locator('#segFull').click();
+  await page.keyboard.press('ControlOrMeta+p');
+  await expect(page.locator('#printDialog')).toBeVisible();
+  await page.locator('#prNotes').uncheck();
+  await page.locator('#prOk').click();
+  const whole = await page.evaluate(() => window.__printed);
+  expect(whole).toContain('Whole Family: Guy de Lusignan');
+  expect(whole).toContain('</span> Sibylla of Jerusalem');
+  expect(whole).toContain('Children\'s generation');
+  expect(whole).not.toContain('rp-notes');
+  await expect(page.locator('#printView')).toBeHidden();
+});

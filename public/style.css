@@ -494,3 +494,42 @@ dialog { background: var(--surface); color: var(--text); }
 .welcome-copy:hover { background: var(--primary-tint); border-color: var(--spine-border); }
 .welcome-actions { margin-top: 22px; display: flex; justify-content: flex-end; }
 .welcome-actions .btn { padding: 10px 26px; }
+
+/* ===== Print dialog ===== */
+.pr-view {
+  font-size: 13px; color: var(--primary-dark); background: var(--primary-tint); border-radius: 8px;
+  padding: 8px 12px; margin: 8px 0 16px; line-height: 1.45;
+}
+
+/* ===== Printed report ===== */
+#printView { display: none; }
+@media print {
+  @page { margin: 16mm 14mm; }
+  html, body { height: auto; overflow: visible; display: block; background: #fff; color: #000; }
+  body > :not(#printView) { display: none !important; }
+  #printView { display: block; }
+}
+.rp { font: 10.5pt/1.4 Georgia, "Times New Roman", serif; color: #000; }
+.rp h1, .rp h2, .rp h3 { break-after: avoid; }
+.rp-head { border-bottom: 1.5pt solid #000; padding-bottom: 6pt; margin-bottom: 6pt; }
+.rp-head h1 { font-size: 18pt; margin: 0; }
+.rp-sub { font-size: 12.5pt; margin: 2pt 0 0; }
+.rp-note { font-style: italic; margin: 4pt 0 0; }
+.rp-meta { font-size: 8.5pt; color: #555; margin: 4pt 0 0; }
+.rp-gen h2 {
+  font-size: 10pt; font-weight: normal; text-transform: uppercase; letter-spacing: .06em; color: #333;
+  border-bottom: .5pt solid #999; padding-bottom: 2pt; margin: 14pt 0 0;
+}
+.rp-list { list-style: none; margin: 0; padding: 0; }
+.rp-entry { padding: 6pt 0; border-bottom: .5pt solid #ddd; break-inside: avoid; }
+.rp-entry:last-child { border-bottom: none; }
+.rp-entry h3 { font-size: 11.5pt; margin: 0 0 3pt; }
+.rp-focus h3 { text-decoration: underline; text-underline-offset: 2pt; }
+.rp-num { display: inline-block; min-width: 2.2em; }
+.rp-life { font-weight: normal; color: #333; }
+.rp-ref { color: #555; font-size: 9pt; }
+.rp-facts { display: grid; grid-template-columns: max-content 1fr; gap: 1pt 12pt; margin: 0; }
+.rp-facts dt { color: #555; }
+.rp-facts dd { margin: 0; }
+.rp-notes { margin-top: 3pt; font-size: 9.5pt; }
+.rp-notes p { margin: 0 0 3pt; }

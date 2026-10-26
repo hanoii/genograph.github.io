@@ -14,6 +14,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Remove a parent, spouse or child link from the side panel with the `✕` next
   to the relationship, after a confirmation. Both people stay in the tree, and
   the link is removed on both sides.
+- Print the current view, or save it as a PDF, with the printer button in the
+  header (or `Ctrl`/`Cmd`+`P`). The printout follows the selected view (*Whole
+  Family*, *Close Family* or *Ancestors*) and focus person, one section per
+  generation in the order the cards are drawn, with each person's facts,
+  relatives cross-referenced by number, and notes. Notes can be left out and the
+  details of living people withheld.
 
 ### Changed
 - Close Family now also shows the focused person's spouse(s) and children (one

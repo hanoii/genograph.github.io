@@ -106,6 +106,12 @@ The app opens with an example tree (the immediate relatives of **Guy de Lusignan
   creating a duplicate.
 - **Remove a link** with the `✕` next to a father, mother, spouse or child in the
   panel. Only the relationship is removed; both people stay in the tree.
+- **Print or save as PDF** the current view with the printer button in the header
+  (or `Ctrl`/`Cmd`+`P`). The printout follows the selected view and focus person:
+  one section per generation (parents, grandparents, children, ...) in the order
+  the cards are drawn, with each person's details, relatives cross-referenced by
+  number, and notes. You can leave out notes and withhold the details of living
+  people before sharing a printout.
 - **Views:** *Whole Family*, *Close Family*, *Ancestors* (segmented control, top).
   Whole Family shows every descendant; Close Family shows the ancestors, their
   siblings, and the focused person's spouse and children; Ancestors shows only
@@ -196,8 +202,8 @@ Dates support an *approximate* flag (`birth_date_uncertain`, …). See
 [`examples/lusignan.json`](examples/lusignan.json) for a complete example.
 
 Genograph currently imports and exports its documented JSON format. GEDCOM
-import/export, source citations, media attachments and printable tree export are
-not yet supported.
+import/export, source citations, media attachments and printing the tree diagram
+itself are not yet supported.
 
 ## Development
 
