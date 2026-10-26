@@ -55,6 +55,10 @@ export function layout(model, focusId, mode, heights = null) {
     cards.push({ id, x, y: -gen * PITCH });
   };
   const seg = (a, b, c, d) => segs.push([a, b, c, d]);
+  // rails under a row all run at one depth, clear of the row's tallest card; the row's
+  // cards are only all known once placed, so rail ends stay functions until the end
+  const rowBottom = new Map();
+  const railAt = gen => () => -gen * PITCH + rowBottom.get(-gen * PITCH) + 12;
   const GAP = H_GAP, INF = 1e9;
 
   /* Generation contours: Map<gen, [lo, hi]> of the horizontal extent a block
@@ -85,9 +89,9 @@ export function layout(model, focusId, mode, heights = null) {
       seg(l + CARD_W / 2, mid, r - CARD_W / 2, mid);
       return { x: (l + r) / 2, y: mid };
     }
-    // apart: a rail under both cards, clear of the taller one
+    // apart: a rail under the cards, at the depth shared by the whole row
     const [lb, rb] = (cx1 <= cx2 ? [id1, id2] : [id2, id1]).map(id => top + hOf(id));
-    const rail = Math.max(lb, rb) + 12;
+    const rail = railAt(gen);
     seg(l, lb, l, rail); seg(r, rb, r, rail); seg(l, rail, r, rail);
     return { x: (l + r) / 2, y: rail };
   }
@@ -340,5 +344,7 @@ export function layout(model, focusId, mode, heights = null) {
     minY = Math.min(minY, c.y); maxY = Math.max(maxY, c.y + hOf(c.id));
   }
   if (!cards.length) { minX = minY = 0; maxX = maxY = 1; }
-  return { cards, segs, bbox: { minX, minY, maxX, maxY } };
+  for (const c of cards) rowBottom.set(c.y, Math.max(rowBottom.get(c.y) ?? 0, hOf(c.id)));
+  const resolved = segs.map(sg => sg.map(v => typeof v === 'function' ? v() : v));
+  return { cards, segs: resolved, bbox: { minX, minY, maxX, maxY } };
 }

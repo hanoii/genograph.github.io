@@ -268,3 +268,18 @@ test('layout: lines leave from the real bottom of cards taller than CARD_H', () 
   assert.ok(tall.segs.some(([x1, y1, x2, y2]) => x1 === me && x2 === me && y1 === 90 && y2 > 90 && y2 < PITCH),
     'the drop to a child with no co-parent leaves from my real bottom');
 });
+
+test('layout: rails under the same row share one depth, below the row\'s tallest card', () => {
+  // two spouses who are not next to the person: two rails on one row
+  const people = [
+    { id: 'me', name: 'Me', sex: 'M', spouse_ids: ['first', 'second', 'third'] },
+    { id: 'first', name: 'First', sex: 'F', spouse_ids: ['me'] },
+    { id: 'second', name: 'Second', sex: 'F', spouse_ids: ['me'] },
+    { id: 'third', name: 'Third', sex: 'F', spouse_ids: ['me'] }
+  ];
+  const rails = out => out.segs.filter(([x1, y1, x2, y2]) => y1 === y2 && y1 > CARD_H / 2 && x2 - x1 > CARD_W).map(sg => sg[1]);
+  const plain = layout(buildModel({ people: structuredClone(people) }), 'me', 'full');
+  assert.deepEqual(rails(plain), [CARD_H + 12, CARD_H + 12]);
+  const tall = layout(buildModel({ people: structuredClone(people) }), 'me', 'full', new Map([['third', 110]]));
+  assert.deepEqual(rails(tall), [110 + 12, 110 + 12], 'the rail to the shorter card drops to the shared depth');
+});
