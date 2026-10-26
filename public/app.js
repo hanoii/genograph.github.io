@@ -368,18 +368,8 @@ function renderTree() {
     $('canvasError').classList.remove('hidden');
     return;
   }
-  const { cards, segs, bbox } = output;
+  const { cards } = output;
   placedIds = new Set(cards.map(c => c.id));
-  lastLayout = { cards, segs, bbox };
-
-  const PAD = 60;
-  const w = bbox.maxX - bbox.minX + PAD * 2, h = bbox.maxY - bbox.minY + PAD * 2;
-  svg.setAttribute('viewBox', `${bbox.minX - PAD} ${bbox.minY - PAD} ${w} ${h}`);
-  svg.style.left = (bbox.minX - PAD) + 'px';
-  svg.style.top = (bbox.minY - PAD) + 'px';
-  svg.style.width = w + 'px';
-  svg.style.height = h + 'px';
-  svg.innerHTML = `<path d="${segs.map(s => `M${s[0]} ${s[1]}L${s[2]} ${s[3]}`).join('')}"/>`;
 
   const frag = document.createDocumentFragment();
   for (const c of cards) {
@@ -412,6 +402,21 @@ function renderTree() {
     frag.appendChild(div);
   }
   cardsEl.replaceChildren(frag);
+  // cards grow with wrapped text; when any did, redo the lines so they leave from
+  // each card's real bottom (card positions do not change)
+  const heights = new Map();
+  for (const el of cardsEl.children) if (el.offsetHeight > CARD_H) heights.set(el.dataset.id, el.offsetHeight);
+  if (heights.size) output = layout(model, focusId, mode, heights);
+  const { segs, bbox } = output;
+  lastLayout = { cards, segs, bbox };
+  const PAD = 60;
+  const w = bbox.maxX - bbox.minX + PAD * 2, h = bbox.maxY - bbox.minY + PAD * 2;
+  svg.setAttribute('viewBox', `${bbox.minX - PAD} ${bbox.minY - PAD} ${w} ${h}`);
+  svg.style.left = (bbox.minX - PAD) + 'px';
+  svg.style.top = (bbox.minY - PAD) + 'px';
+  svg.style.width = w + 'px';
+  svg.style.height = h + 'px';
+  svg.innerHTML = `<path d="${segs.map(s => `M${s[0]} ${s[1]}L${s[2]} ${s[3]}`).join('')}"/>`;
   $('stats').textContent = `${model.people.length} ${t('people')} · ${placedIds.size} ${t('shown')}`;
   renderQuickAdd(cardsEl);
 

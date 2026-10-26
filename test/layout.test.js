@@ -182,3 +182,30 @@ test('layout: the focus person sits straight under their parents, their spouse o
   assert.ok(center(alone, 'sp') > center(alone, 'me'));
   assert.equal(center(alone, 'me'), (center(alone, 'fa') + center(alone, 'mo')) / 2);
 });
+
+test('layout: lines leave from the real bottom of cards taller than CARD_H', () => {
+  // the second spouse is not next to the person, so their marriage runs as a rail under the cards
+  const people = [
+    { id: 'me', name: 'Me', sex: 'M', spouse_ids: ['first', 'second'], children_ids: ['kid', 'solo'] },
+    { id: 'first', name: 'First', sex: 'F', spouse_ids: ['me'] },
+    { id: 'second', name: 'Second', sex: 'F', spouse_ids: ['me'], children_ids: ['kid'] },
+    { id: 'kid', name: 'Kid', father_id: 'me', mother_id: 'second' },
+    { id: 'solo', name: 'Solo', father_id: 'me' }
+  ];
+  const model = () => buildModel({ people: structuredClone(people) });
+  const center = (cards, id) => cards.find(c => c.id === id).x + CARD_W / 2;
+  const railY = segs => segs.find(([x1, y1, x2, y2]) => y1 === y2 && y1 > CARD_H / 2 && y1 < PITCH - 26 && x2 - x1 > CARD_W)?.[1];
+
+  const plain = layout(model(), 'me', 'full');
+  assert.equal(railY(plain.segs), CARD_H + 12, 'the rail sits just under standard cards');
+
+  const tall = layout(model(), 'me', 'full', new Map([['second', 100], ['me', 90]]));
+  assert.deepEqual(tall.cards, plain.cards, 'card positions do not change');
+  assert.equal(railY(tall.segs), 100 + 12, 'the rail clears the taller card');
+  const me = center(tall.cards, 'me'), second = center(tall.cards, 'second');
+  assert.ok(tall.segs.some(([x1, y1, x2]) => x1 === me && x2 === me && y1 === 90), 'my stub starts at my bottom');
+  assert.ok(tall.segs.some(([x1, y1, x2]) => x1 === second && x2 === second && y1 === 100), 'the spouse stub starts at hers');
+  assert.equal(tall.bbox.maxY, plain.bbox.maxY, 'the lowest row is unchanged');
+  assert.ok(tall.segs.some(([x1, y1, x2, y2]) => x1 === me && x2 === me && y1 === 90 && y2 > 90 && y2 < PITCH),
+    'the drop to a child with no co-parent leaves from my real bottom');
+});

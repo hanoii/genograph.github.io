@@ -16,6 +16,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Keep the line from the parents straight down to the focus person when cousins
   fill the row on their spouse's side: the spouse moves to the other side
   instead of the line stepping sideways to reach the person.
+- Run the line joining a couple who are not side by side under the taller of
+  their two cards. Cards grow when a name or place wraps, and the line used to
+  sit at a fixed depth that a taller card could reach and hide.
 
 ## [1.2.3] - 2026-08-23
 
