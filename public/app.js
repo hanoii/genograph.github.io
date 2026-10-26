@@ -121,7 +121,7 @@ const I18N = {
     reportGenUp3: 'Büyük büyükanne-büyükbaba kuşağı', reportGenUpN: '{d} kuşak yukarı',
     reportGenDown1: 'Çocuklar kuşağı', reportGenDown2: 'Torunlar kuşağı', reportGenDown3: 'Torun çocukları kuşağı',
     reportGenDownN: '{d} kuşak aşağı',
-    printCompact: 'Kompakt: kişi başına bir satır', reportParents: 'Anne-baba', reportLivingShort: 'Yaşıyor',
+    printCompact: 'Kompakt: kişi başına bir satır', reportParents: 'Anne-baba', reportLivingShort: 'Yaşıyor', reportMonths: '{m} ay',
     reportAhnentafel: 'Ahnentafel numaraları: bir kişinin babası numarasının iki katı, annesi iki katının bir fazlasıdır.'
   },
   en: {
@@ -218,7 +218,7 @@ const I18N = {
     reportGenUp3: 'Great-grandparents\' generation', reportGenUpN: '{k}× great-grandparents\' generation',
     reportGenDown1: 'Children\'s generation', reportGenDown2: 'Grandchildren\'s generation', reportGenDown3: 'Great-grandchildren\'s generation',
     reportGenDownN: '{k}× great-grandchildren\'s generation',
-    printCompact: 'Compact: one line per person', reportParents: 'Parents', reportLivingShort: 'Living',
+    printCompact: 'Compact: one line per person', reportParents: 'Parents', reportLivingShort: 'Living', reportMonths: '{m} months',
     reportAhnentafel: 'Ahnentafel numbers: anyone\'s father is twice their number, their mother twice plus one.'
   }
 };
