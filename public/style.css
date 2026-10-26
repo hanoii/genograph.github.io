@@ -498,13 +498,14 @@ dialog { background: var(--surface); color: var(--text); }
 /* ===== Print dialog ===== */
 .pr-opts { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
 .pr-group { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.pr-opt {
-  display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--outline); border-radius: 12px;
-  padding: 10px 12px; cursor: pointer;
-}
-.pr-opt:has(input:checked) { border-color: var(--primary); background: var(--primary-tint); }
+.pr-opt { border: 1px solid var(--outline); border-radius: 12px; padding: 10px 12px; }
+.pr-opt:has(input[type="radio"]:checked) { border-color: var(--primary); background: var(--primary-tint); }
+.pr-choice, .pr-sub { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
 .pr-opt input { margin: 2px 0 0; accent-color: var(--primary); cursor: pointer; }
 .pr-opt .hint { display: block; margin-top: 2px; }
+/* a layout's own options sit under its description, dimmed while another layout is chosen */
+.pr-sub { font-size: 13.5px; margin: 8px 0 0 23px; }
+.pr-opt:not(:has(input[type="radio"]:checked)) .pr-sub { opacity: .6; }
 .pr-label { font-size: 14px; font-weight: 500; }
 .pr-view {
   font-size: 13px; color: var(--primary-dark); background: var(--primary-tint); border-radius: 8px;
