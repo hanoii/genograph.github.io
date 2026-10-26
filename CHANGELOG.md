@@ -52,6 +52,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   couple, so both families' children looked like one set of siblings.
 - Break a line around the point where it crosses another line without joining
   it, so a crossing no longer reads as a connection.
+- Filter any view to the focus person's father's or mother's side of the family.
 
 ## [1.2.3] - 2026-08-23
 

@@ -29,6 +29,7 @@ if (window.top !== window.self) {
 const I18N = {
   tr: {
     title: 'Aile Ağacı', modeFull: 'Tüm Aile', modeClose: 'Yakın Aile', modeAnc: 'Atalar',
+    sideBoth: 'İki taraf', sideFather: 'Baba tarafı', sideMother: 'Anne tarafı',
     search: 'Kişi ara…', saved: 'Kaydedildi', saving: 'Kaydediliyor…', unsaved: 'Kaydedilmedi ●', saveErr: 'Kayıt hatası!',
     layoutTooComplex: 'Bu ilişki ağı güvenle çizilemeyecek kadar karmaşık.',
     relationshipCycle: 'Bu ilişki bir soy döngüsü oluşturur ve eklenemez.',
@@ -130,6 +131,7 @@ const I18N = {
   },
   en: {
     title: 'Family Tree', modeFull: 'Whole Family', modeClose: 'Close Family', modeAnc: 'Ancestors',
+    sideBoth: 'Both sides', sideFather: "Father's side", sideMother: "Mother's side",
     search: 'Search people…', saved: 'Saved', saving: 'Saving…', unsaved: 'Unsaved ●', saveErr: 'Save failed!',
     layoutTooComplex: 'This relationship graph is too complex to lay out safely.',
     relationshipCycle: 'That relationship would create an ancestry cycle.',
@@ -271,6 +273,9 @@ let focusId = null;
 let rootId = null;
 const MODES = ['full', 'close', 'ancestors'];
 let mode = MODES.includes(localStorage.getItem('ft_mode')) ? localStorage.getItem('ft_mode') : 'full';
+// '' shows both sides of the focus person's family; 'father' or 'mother' only that side
+const SIDES = ['', 'father', 'mother'];
+let side = SIDES.includes(localStorage.getItem('ft_side')) ? localStorage.getItem('ft_side') : '';
 let selectedId = null;
 let dirty = false, saveTimer = null;
 const saves = new SaveCoordinator();
@@ -401,13 +406,15 @@ function renderTree() {
     lastLayout = { cards: [], segs: [], bbox: { minX: 0, minY: 0, maxX: 1, maxY: 1 } };
     $('stats').textContent = '';
     $('focusChip').classList.add('hidden');
+    $('sideSeg').classList.add('hidden');
     renderEmptyState();
     return;
   }
   $('emptyState').classList.add('hidden');
+  $('sideSeg').classList.remove('hidden');
   let output;
   try {
-    output = layout(model, focusId, mode);
+    output = layout(model, focusId, mode, null, side || null);
     $('canvasError').classList.add('hidden');
   } catch (error) {
     svg.innerHTML = ''; cardsEl.replaceChildren();
@@ -460,7 +467,7 @@ function renderTree() {
   // each card's real bottom (card positions do not change)
   const heights = new Map();
   for (const el of cardsEl.children) if (el.offsetHeight > CARD_H) heights.set(el.dataset.id, el.offsetHeight);
-  if (heights.size) output = layout(model, focusId, mode, heights);
+  if (heights.size) output = layout(model, focusId, mode, heights, side || null);
   const { segs, bbox } = output;
   lastLayout = { cards, segs, bbox };
   const PAD = 60;
@@ -556,7 +563,7 @@ function setupCanvas() {
   // canvas captures the pointer, the eventual click event targets the canvas,
   // not the element under the finger/cursor.
   let panning = false, sx = 0, sy = 0, stx = 0, sty = 0, moved = false, pressCard = null, pressQadd = null;
-  const onControl = e => e.target.closest('#focusChip, .zoomctrl, #fab, #emptyState');
+  const onControl = e => e.target.closest('#focusChip, #sideSeg, .zoomctrl, #fab, #emptyState');
   // Active pointers, so we can support one-finger pan and two-finger pinch-zoom.
   const pointers = new Map();
   let pinchDist = 0, pinchCx = 0, pinchCy = 0;
@@ -1591,6 +1598,9 @@ function applyLabels() {
   $('segFull').textContent = t('modeFull');
   $('segClose').textContent = t('modeClose');
   $('segAnc').textContent = t('modeAnc');
+  $('sideBoth').textContent = t('sideBoth');
+  $('sideFather').textContent = t('sideFather');
+  $('sideMother').textContent = t('sideMother');
   $('searchInput').placeholder = t('search');
   $('searchInput').setAttribute('aria-label', t('search'));
   $('homeBtn').title = t('home');
@@ -1624,6 +1634,11 @@ function applyLabels() {
     b.classList.toggle('active', active);
     b.setAttribute('aria-pressed', String(active));
   });
+  document.querySelectorAll('#sideSeg button').forEach(b => {
+    const active = b.dataset.side === side;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
   if (!dirty) setStatus('saved', model ? '✓ ' + t('saved') : '');
 }
 
@@ -1632,6 +1647,16 @@ function setupAppbar() {
     btn.onclick = () => {
       mode = btn.dataset.mode;
       localStorage.setItem('ft_mode', mode);
+      applyLabels();
+      renderTree();
+      fitView();
+      renderPanel();
+    };
+  });
+  document.querySelectorAll('#sideSeg button').forEach(btn => {
+    btn.onclick = () => {
+      side = btn.dataset.side;
+      localStorage.setItem('ft_side', side);
       applyLabels();
       renderTree();
       fitView();

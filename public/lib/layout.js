@@ -8,6 +8,9 @@
  *               focus person's own spouses and children
  *   ancestors — only the direct pedigree line
  *
+ * `side` ('father' or 'mother') keeps only that side of the focus person's family:
+ * the other parent's line, and half-siblings through them, are left out.
+ *
  * Blocks are packed using per-generation horizontal "contours" so deep
  * descendant subtrees can never collide with neighbouring branches.
  * ============================================================ */
@@ -26,10 +29,13 @@ const CROSS_GAP = 5;
  * Card positions never depend on it.
  * @returns {{cards: {id,x,y}[], segs: [number,number,number,number][], bbox: {minX,minY,maxX,maxY}}}
  */
-export function layout(model, focusId, mode, heights = null) {
+export function layout(model, focusId, mode, heights = null, side = null) {
   const by = id => model.byId.get(id);
   // a card's height for drawing lines, kept clear of the bus above the next generation
   const hOf = id => Math.min(Math.max(CARD_H, heights?.get(id) ?? CARD_H), PITCH - 50);
+  // the person's parents, less the focus person's parent on the side left out
+  const fatherOf = p => (p.id === focusId && side === 'mother') ? null : p._father;
+  const motherOf = p => (p.id === focusId && side === 'father') ? null : p._mother;
   const cards = [], segs = [];
   let work = 0;
   const spend = () => {
@@ -42,7 +48,7 @@ export function layout(model, focusId, mode, heights = null) {
     if (!id || d > MAXDEPTH || spine.has(id)) return;
     const p = by(id); if (!p) return;
     spine.add(id);
-    up(p._father, d + 1); up(p._mother, d + 1);
+    up(fatherOf(p), d + 1); up(motherOf(p), d + 1);
   })(focusId, 0);
 
   // everyone given a place so far: a person reachable twice (a spouse who is also a
@@ -205,8 +211,8 @@ export function layout(model, focusId, mode, heights = null) {
     if (!p) return null;
     const nextTrail = new Set(trail);
     nextTrail.add(pid);
-    const faId = (p && p._father && by(p._father)) ? p._father : null;
-    const moId = (p && p._mother && by(p._mother)) ? p._mother : null;
+    const faId = (fatherOf(p) && by(p._father)) ? p._father : null;
+    const moId = (motherOf(p) && by(p._mother)) ? p._mother : null;
     const faB = (faId && depth < MAXDEPTH) ? ancNode(faId, depth + 1, nextTrail, 'father') : null;
     const moB = (moId && moId !== faId && depth < MAXDEPTH)
       ? ancNode(moId, depth + 1, nextTrail, 'mother')

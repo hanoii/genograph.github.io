@@ -98,9 +98,16 @@
       <button class="btn filled" id="emptyAction"></button>
     </div>
     <div id="canvasError" class="canvas-error hidden" role="alert"></div>
-    <div id="focusChip" class="hidden">
-      <span id="focusChipName"></span>
-      <button id="focusClear" title="">✕</button>
+    <div id="canvasTop">
+      <div class="seg hidden" id="sideSeg" role="group" aria-label="Family side">
+        <button data-side="" id="sideBoth"></button>
+        <button data-side="father" id="sideFather"></button>
+        <button data-side="mother" id="sideMother"></button>
+      </div>
+      <div id="focusChip" class="hidden">
+        <span id="focusChipName"></span>
+        <button id="focusClear" title="">✕</button>
+      </div>
     </div>
     <div class="zoomctrl">
       <button id="zoomIn" title="+">＋</button>
