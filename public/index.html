@@ -222,8 +222,14 @@
 <dialog id="printDialog">
   <h2 id="prTitle"></h2>
   <p class="pr-view" id="prViewHint"></p>
-  <label class="checkrow"><input type="checkbox" id="prCompact"> <span id="lbPrCompact"></span></label>
-  <label class="checkrow"><input type="checkbox" id="prNotes"> <span id="lbPrNotes"></span></label>
+  <div class="pr-opts" role="radiogroup" aria-labelledby="lbPrLayout">
+    <span class="pr-group" id="lbPrLayout"></span>
+    <label class="pr-opt"><input type="radio" name="prLayout" id="prDetailed">
+      <span><span class="pr-label" id="lbPrDetailed"></span><span class="hint" id="prDetailedHint"></span></span></label>
+    <label class="pr-opt"><input type="radio" name="prLayout" id="prCompact">
+      <span><span class="pr-label" id="lbPrCompact"></span><span class="hint" id="prCompactHint"></span></span></label>
+  </div>
+  <label class="checkrow" id="prNotesRow"><input type="checkbox" id="prNotes"> <span id="lbPrNotes"></span></label>
   <label class="checkrow"><input type="checkbox" id="prLiving"> <span id="lbPrLiving"></span></label>
   <p class="hint" id="prPdfHint"></p>
   <div class="actions">
