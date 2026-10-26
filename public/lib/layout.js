@@ -4,7 +4,8 @@
  * Computes card positions and connector line segments for a model rooted on
  * `focusId`, in one of three modes:
  *   full      — focus person's ancestors (+ their siblings) and all descendants
- *   close     — direct ancestor line plus each ancestor's siblings
+ *   close     — direct ancestor line plus each ancestor's siblings, and the
+ *               focus person's own spouses and children
  *   ancestors — only the direct pedigree line
  *
  * Blocks are packed using per-generation horizontal "contours" so deep
@@ -99,7 +100,8 @@ export function layout(model, focusId, mode) {
   function descNode(pid, depth, trail = new Set()) {
     spend();
     const p = by(pid);
-    const withFam = full && !!p && depth < MAXDEPTH && !trail.has(pid);
+    // close mode still shows the focus person's own household, one generation down
+    const withFam = (full || (mode === 'close' && pid === focusId)) && !!p && depth < MAXDEPTH && !trail.has(pid);
     const nextTrail = new Set(trail);
     nextTrail.add(pid);
     const spouses = withFam ? [...new Set(p._spouses.filter(s => !spine.has(s) && by(s)))] : [];

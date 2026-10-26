@@ -110,3 +110,22 @@ test('layout — children from different spouses use distinct union drops', () =
     assert.ok(segs.some(([x1, , x2, y2]) => x1 === center && x2 === center && y2 === PITCH));
   }
 });
+
+test('layout — close mode shows the focus person\'s spouse and children, not grandchildren', () => {
+  const model = buildModel({
+    people: [
+      { id: 'me', name: 'Me', sex: 'M', father_id: 'dad', spouse_ids: ['wife'] },
+      { id: 'wife', name: 'Wife', sex: 'F' },
+      { id: 'kid', name: 'Kid', father_id: 'me', mother_id: 'wife', spouse_ids: ['kid-spouse'] },
+      { id: 'kid-spouse', name: 'Kid spouse' },
+      { id: 'grandkid', name: 'Grandkid', father_id: 'kid' },
+      { id: 'dad', name: 'Dad', sex: 'M' },
+      { id: 'brother', name: 'Brother', father_id: 'dad', spouse_ids: ['sister-in-law'] },
+      { id: 'sister-in-law', name: 'Sister-in-law' },
+      { id: 'nephew', name: 'Nephew', father_id: 'brother' }
+    ]
+  });
+  const ids = layout(model, 'me', 'close').cards.map(card => card.id).sort();
+  assert.deepEqual(ids, ['brother', 'dad', 'kid', 'me', 'wife']);
+  assert.ok(layout(model, 'me', 'full').cards.some(card => card.id === 'grandkid'), 'full mode still has every descendant');
+});

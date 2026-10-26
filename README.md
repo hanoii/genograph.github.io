@@ -105,6 +105,9 @@ The app opens with an example tree (the immediate relatives of **Guy de Lusignan
   child (below). While typing a name you can link an existing person instead of
   creating a duplicate.
 - **Views:** *Whole Family*, *Close Family*, *Ancestors* (segmented control, top).
+  Whole Family shows every descendant; Close Family shows the ancestors, their
+  siblings, and the focused person's spouse and children; Ancestors shows only
+  the direct line.
 - **Search** anyone (top-left), including people not connected to the current view.
 - **Dark mode** and **EN / TR** language toggle in the header.
 - Drag to pan, scroll / pinch to zoom, **Fit** to frame the whole tree.
